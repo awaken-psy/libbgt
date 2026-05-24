@@ -1,0 +1,6 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+BreakBeforeBraces: Stroustrup
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+IndentCaseLabels: true
