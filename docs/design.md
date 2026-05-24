@@ -514,3 +514,14 @@ libbgt/
 - 键盘和鼠标输入能工作。
 - Windows 下示例源码使用中文字符串不乱码。
 - 缺失字体或 SDL 初始化失败时有可读错误信息。
+
+## 19. 当前实现状态
+
+当前首版实现文件：
+
+- `include/bgt.h`
+- `src/bgt.cpp`
+- `CMakeLists.txt`
+- `examples/01_hello.cpp`
+
+实现范围与 `docs/api-v0.md` 保持一致。内置中文字体路径默认为 `assets/fonts/NotoSansSC-Regular.otf`，字体文件由项目维护者放入对应目录。

@@ -87,7 +87,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-当前仓库暂时只包含设计与 API 文档，尚未包含实现代码。
+当前仓库包含首版基础 API 实现、CMake 构建脚本和一个最小示例。中文字体文件由 `assets/fonts/NotoSansSC-Regular.otf` 提供，仓库使用者需要确保该文件存在。
 
 ## 文档
 
@@ -105,6 +105,12 @@ cmake --build build
 - 鼠标输入。
 - 时间与帧率辅助。
 - 基础错误信息。
+
+首版入口文件：
+
+- `include/bgt.h`
+- `src/bgt.cpp`
+- `examples/01_hello.cpp`
 
 首版暂不提供：
 
