@@ -449,6 +449,103 @@ void draw_hline(State &s, int x1, int x2, int y)
                    static_cast<float>(x2), static_cast<float>(y));
 }
 
+double fractional_part(double value)
+{
+    return value - std::floor(value);
+}
+
+double reverse_fractional_part(double value)
+{
+    return 1.0 - fractional_part(value);
+}
+
+void draw_coverage_point(State &s, int x, int y, double coverage)
+{
+    coverage = std::clamp(coverage, 0.0, 1.0);
+    const int alpha =
+        static_cast<int>(std::lround(color_a(s.color) * coverage));
+    if (alpha <= 0) {
+        return;
+    }
+
+    SDL_SetRenderDrawColor(s.renderer, color_r(s.color), color_g(s.color),
+                           color_b(s.color), static_cast<std::uint8_t>(alpha));
+    SDL_RenderPoint(s.renderer, static_cast<float>(x), static_cast<float>(y));
+}
+
+void draw_aa_line(State &s, int x1, int y1, int x2, int y2)
+{
+    if (x1 == x2 && y1 == y2) {
+        draw_coverage_point(s, x1, y1, 1.0);
+        return;
+    }
+
+    const bool steep = std::abs(y2 - y1) > std::abs(x2 - x1);
+    if (steep) {
+        std::swap(x1, y1);
+        std::swap(x2, y2);
+    }
+    if (x1 > x2) {
+        std::swap(x1, x2);
+        std::swap(y1, y2);
+    }
+
+    const double dx = static_cast<double>(x2 - x1);
+    const double dy = static_cast<double>(y2 - y1);
+    const double gradient = dx == 0.0 ? 1.0 : dy / dx;
+
+    const int first_x = static_cast<int>(std::lround(x1));
+    const double first_y = y1 + (gradient * (first_x - x1));
+    const double first_gap = reverse_fractional_part(x1 + 0.5);
+    const int first_pixel_y = static_cast<int>(std::floor(first_y));
+
+    if (steep) {
+        draw_coverage_point(s, first_pixel_y, first_x,
+                            reverse_fractional_part(first_y) * first_gap);
+        draw_coverage_point(s, first_pixel_y + 1, first_x,
+                            fractional_part(first_y) * first_gap);
+    }
+    else {
+        draw_coverage_point(s, first_x, first_pixel_y,
+                            reverse_fractional_part(first_y) * first_gap);
+        draw_coverage_point(s, first_x, first_pixel_y + 1,
+                            fractional_part(first_y) * first_gap);
+    }
+
+    double inter_y = first_y + gradient;
+
+    const int last_x = static_cast<int>(std::lround(x2));
+    const double last_y = y2 + (gradient * (last_x - x2));
+    const double last_gap = fractional_part(x2 + 0.5);
+    const int last_pixel_y = static_cast<int>(std::floor(last_y));
+
+    for (int x = first_x + 1; x < last_x; ++x) {
+        const int y = static_cast<int>(std::floor(inter_y));
+        if (steep) {
+            draw_coverage_point(s, y, x, reverse_fractional_part(inter_y));
+            draw_coverage_point(s, y + 1, x, fractional_part(inter_y));
+        }
+        else {
+            draw_coverage_point(s, x, y, reverse_fractional_part(inter_y));
+            draw_coverage_point(s, x, y + 1, fractional_part(inter_y));
+        }
+        inter_y += gradient;
+    }
+
+    if (steep) {
+        draw_coverage_point(s, last_pixel_y, last_x,
+                            reverse_fractional_part(last_y) * last_gap);
+        draw_coverage_point(s, last_pixel_y + 1, last_x,
+                            fractional_part(last_y) * last_gap);
+    }
+    else {
+        draw_coverage_point(s, last_x, last_pixel_y,
+                            reverse_fractional_part(last_y) * last_gap);
+        draw_coverage_point(s, last_x, last_pixel_y + 1,
+                            fractional_part(last_y) * last_gap);
+    }
+}
+
 void draw_text_impl(State &s, int x, int y, const char text[], int size)
 {
     if (!ensure_open(s) || text == nullptr || text[0] == '\0') {
@@ -720,16 +817,12 @@ void bgt_draw_line(int x1, int y1, int x2, int y2)
     apply_render_color(s, s.color);
     const int half = std::max(0, s.line_width / 2);
     for (int offset = -half; offset <= half; ++offset) {
-        SDL_RenderLine(s.renderer, static_cast<float>(x1 + offset),
-                       static_cast<float>(y1), static_cast<float>(x2 + offset),
-                       static_cast<float>(y2));
+        draw_aa_line(s, x1 + offset, y1, x2 + offset, y2);
         if (offset != 0) {
-            SDL_RenderLine(s.renderer, static_cast<float>(x1),
-                           static_cast<float>(y1 + offset),
-                           static_cast<float>(x2),
-                           static_cast<float>(y2 + offset));
+            draw_aa_line(s, x1, y1 + offset, x2, y2 + offset);
         }
     }
+    apply_render_color(s, s.color);
 }
 
 void bgt_draw_rect(int x, int y, int width, int height)
@@ -802,22 +895,12 @@ void bgt_fill_circle(int x, int y, int radius)
         return;
     }
     apply_render_color(s, s.color);
-    int dx = radius;
-    int dy = 0;
-    int error = 1 - dx;
-    while (dx >= dy) {
-        draw_hline(s, x - dx, x + dx, y + dy);
-        draw_hline(s, x - dx, x + dx, y - dy);
-        draw_hline(s, x - dy, x + dy, y + dx);
-        draw_hline(s, x - dy, x + dy, y - dx);
-        ++dy;
-        if (error < 0) {
-            error += (2 * dy) + 1;
-        }
-        else {
-            --dx;
-            error += 2 * (dy - dx + 1);
-        }
+    for (int dy = -radius; dy <= radius; ++dy) {
+        const double normalized_y =
+            static_cast<double>(dy) / static_cast<double>(radius);
+        const int span = static_cast<int>(std::floor(
+            radius * std::sqrt(1.0 - (normalized_y * normalized_y))));
+        draw_hline(s, x - span, x + span, y + dy);
     }
 }
 
@@ -838,12 +921,11 @@ void bgt_draw_ellipse(int x, int y, int radius_x, int radius_y)
             x + static_cast<int>(std::lround(std::cos(angle) * radius_x));
         const int next_y =
             y + static_cast<int>(std::lround(std::sin(angle) * radius_y));
-        SDL_RenderLine(s.renderer, static_cast<float>(previous_x),
-                       static_cast<float>(previous_y),
-                       static_cast<float>(next_x), static_cast<float>(next_y));
+        draw_aa_line(s, previous_x, previous_y, next_x, next_y);
         previous_x = next_x;
         previous_y = next_y;
     }
+    apply_render_color(s, s.color);
 }
 
 void bgt_fill_ellipse(int x, int y, int radius_x, int radius_y)
