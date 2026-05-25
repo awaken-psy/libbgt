@@ -305,73 +305,158 @@ TTF_Font *get_font(State &s, int size)
     return font;
 }
 
-SDL_Scancode key_to_scancode(int key)
+int digit_key_from_scancode(SDL_Scancode scancode)
 {
-    switch (key) {
-        case BGT_KEY_LEFT:
-            return SDL_SCANCODE_LEFT;
-        case BGT_KEY_RIGHT:
-            return SDL_SCANCODE_RIGHT;
-        case BGT_KEY_UP:
-            return SDL_SCANCODE_UP;
-        case BGT_KEY_DOWN:
-            return SDL_SCANCODE_DOWN;
-        case BGT_KEY_SPACE:
-            return SDL_SCANCODE_SPACE;
-        case BGT_KEY_ENTER:
-            return SDL_SCANCODE_RETURN;
-        case BGT_KEY_ESCAPE:
-            return SDL_SCANCODE_ESCAPE;
-        case BGT_KEY_TAB:
-            return SDL_SCANCODE_TAB;
-        case BGT_KEY_BACKSPACE:
-            return SDL_SCANCODE_BACKSPACE;
+    switch (scancode) {
+        case SDL_SCANCODE_0:
+        case SDL_SCANCODE_KP_0:
+            return BGT_KEY_0;
+        case SDL_SCANCODE_1:
+        case SDL_SCANCODE_KP_1:
+            return BGT_KEY_1;
+        case SDL_SCANCODE_2:
+        case SDL_SCANCODE_KP_2:
+            return BGT_KEY_2;
+        case SDL_SCANCODE_3:
+        case SDL_SCANCODE_KP_3:
+            return BGT_KEY_3;
+        case SDL_SCANCODE_4:
+        case SDL_SCANCODE_KP_4:
+            return BGT_KEY_4;
+        case SDL_SCANCODE_5:
+        case SDL_SCANCODE_KP_5:
+            return BGT_KEY_5;
+        case SDL_SCANCODE_6:
+        case SDL_SCANCODE_KP_6:
+            return BGT_KEY_6;
+        case SDL_SCANCODE_7:
+        case SDL_SCANCODE_KP_7:
+            return BGT_KEY_7;
+        case SDL_SCANCODE_8:
+        case SDL_SCANCODE_KP_8:
+            return BGT_KEY_8;
+        case SDL_SCANCODE_9:
+        case SDL_SCANCODE_KP_9:
+            return BGT_KEY_9;
+        default:
+            return 0;
+    }
+}
+
+int numlock_off_keypad_key(SDL_Scancode scancode)
+{
+    switch (scancode) {
+        case SDL_SCANCODE_KP_2:
+            return BGT_KEY_DOWN;
+        case SDL_SCANCODE_KP_4:
+            return BGT_KEY_LEFT;
+        case SDL_SCANCODE_KP_6:
+            return BGT_KEY_RIGHT;
+        case SDL_SCANCODE_KP_8:
+            return BGT_KEY_UP;
+        default:
+            return 0;
+    }
+}
+
+bool is_keypad_digit_scancode(SDL_Scancode scancode)
+{
+    switch (scancode) {
+        case SDL_SCANCODE_KP_0:
+        case SDL_SCANCODE_KP_1:
+        case SDL_SCANCODE_KP_2:
+        case SDL_SCANCODE_KP_3:
+        case SDL_SCANCODE_KP_4:
+        case SDL_SCANCODE_KP_5:
+        case SDL_SCANCODE_KP_6:
+        case SDL_SCANCODE_KP_7:
+        case SDL_SCANCODE_KP_8:
+        case SDL_SCANCODE_KP_9:
+            return true;
+        default:
+            return false;
+    }
+}
+
+int scancode_to_key(SDL_Scancode scancode, SDL_Keymod modifiers)
+{
+    switch (scancode) {
+        case SDL_SCANCODE_LEFT:
+            return BGT_KEY_LEFT;
+        case SDL_SCANCODE_RIGHT:
+            return BGT_KEY_RIGHT;
+        case SDL_SCANCODE_UP:
+            return BGT_KEY_UP;
+        case SDL_SCANCODE_DOWN:
+            return BGT_KEY_DOWN;
+        case SDL_SCANCODE_SPACE:
+            return BGT_KEY_SPACE;
+        case SDL_SCANCODE_RETURN:
+        case SDL_SCANCODE_KP_ENTER:
+            return BGT_KEY_ENTER;
+        case SDL_SCANCODE_ESCAPE:
+            return BGT_KEY_ESCAPE;
+        case SDL_SCANCODE_TAB:
+        case SDL_SCANCODE_KP_TAB:
+            return BGT_KEY_TAB;
+        case SDL_SCANCODE_BACKSPACE:
+        case SDL_SCANCODE_KP_BACKSPACE:
+            return BGT_KEY_BACKSPACE;
+        case SDL_SCANCODE_LSHIFT:
+        case SDL_SCANCODE_RSHIFT:
+            return BGT_KEY_SHIFT;
+        case SDL_SCANCODE_LCTRL:
+        case SDL_SCANCODE_RCTRL:
+            return BGT_KEY_CTRL;
+        case SDL_SCANCODE_LALT:
+        case SDL_SCANCODE_RALT:
+            return BGT_KEY_ALT;
         default:
             break;
     }
 
-    if (key >= BGT_KEY_A && key <= BGT_KEY_Z) {
-        return static_cast<SDL_Scancode>(SDL_SCANCODE_A + (key - BGT_KEY_A));
+    if (scancode >= SDL_SCANCODE_A && scancode <= SDL_SCANCODE_Z) {
+        return BGT_KEY_A + (scancode - SDL_SCANCODE_A);
     }
-    if (key >= BGT_KEY_0 && key <= BGT_KEY_9) {
-        return static_cast<SDL_Scancode>(SDL_SCANCODE_0 + (key - BGT_KEY_0));
+    if (scancode >= SDL_SCANCODE_F1 && scancode <= SDL_SCANCODE_F12) {
+        return BGT_KEY_F1 + (scancode - SDL_SCANCODE_F1);
     }
-    if (key >= BGT_KEY_F1 && key <= BGT_KEY_F12) {
-        return static_cast<SDL_Scancode>(SDL_SCANCODE_F1 + (key - BGT_KEY_F1));
-    }
-    return SDL_SCANCODE_UNKNOWN;
-}
 
-std::vector<int> public_keys()
-{
-    std::vector<int> keys = {BGT_KEY_LEFT,   BGT_KEY_RIGHT, BGT_KEY_UP,
-                             BGT_KEY_DOWN,   BGT_KEY_SPACE, BGT_KEY_ENTER,
-                             BGT_KEY_ESCAPE, BGT_KEY_TAB,   BGT_KEY_BACKSPACE};
-    for (int key = BGT_KEY_A; key <= BGT_KEY_Z; ++key) {
-        keys.push_back(key);
+    if ((modifiers & SDL_KMOD_NUM) == 0) {
+        const int keypad_key = numlock_off_keypad_key(scancode);
+        if (keypad_key != 0) {
+            return keypad_key;
+        }
     }
-    for (int key = BGT_KEY_0; key <= BGT_KEY_9; ++key) {
-        keys.push_back(key);
+
+    const int digit_key = digit_key_from_scancode(scancode);
+    if (digit_key != 0 && ((modifiers & SDL_KMOD_NUM) != 0 ||
+                           !is_keypad_digit_scancode(scancode))) {
+        return digit_key;
     }
-    for (int key = BGT_KEY_F1; key <= BGT_KEY_F12; ++key) {
-        keys.push_back(key);
-    }
-    return keys;
+
+    return 0;
 }
 
 void sync_keyboard(State &s)
 {
+    s.keys.fill(false);
+
     int key_count = 0;
     const bool *keyboard = SDL_GetKeyboardState(&key_count);
     if (keyboard == nullptr) {
         return;
     }
 
-    for (const int key : public_keys()) {
-        const SDL_Scancode scancode = key_to_scancode(key);
-        if (scancode != SDL_SCANCODE_UNKNOWN &&
-            static_cast<int>(scancode) < key_count) {
-            s.keys[static_cast<std::size_t>(key)] = keyboard[scancode];
+    const SDL_Keymod modifiers = SDL_GetModState();
+    for (int scancode_value = 0; scancode_value < key_count; ++scancode_value) {
+        if (!keyboard[scancode_value]) {
+            continue;
+        }
+        const int key = scancode_to_key(
+            static_cast<SDL_Scancode>(scancode_value), modifiers);
+        if (key > 0 && key < kMaxPublicKey) {
+            s.keys[static_cast<std::size_t>(key)] = true;
         }
     }
 }

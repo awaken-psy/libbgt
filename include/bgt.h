@@ -36,6 +36,9 @@
 #define BGT_KEY_ESCAPE 7
 #define BGT_KEY_TAB 8
 #define BGT_KEY_BACKSPACE 9
+#define BGT_KEY_SHIFT 10
+#define BGT_KEY_CTRL 11
+#define BGT_KEY_ALT 12
 
 #define BGT_KEY_A 100
 #define BGT_KEY_B 101
@@ -238,14 +241,18 @@ int bgt_text_height(const char text[]);
 int bgt_text_height(const char text[], int size);
 
 // 判断某个键当前是否正被按住。key 使用 BGT_KEY_LEFT、BGT_KEY_A 等按键常量。
+// 左右 Shift/Ctrl/Alt 会分别合并为 BGT_KEY_SHIFT、BGT_KEY_CTRL、BGT_KEY_ALT。
+// 小键盘在 Num Lock 开启时会映射为数字键；关闭时 2/4/6/8 会映射为方向键。
 // 适合持续移动这类“按住就一直生效”的操作。
 bool bgt_key_down(int key);
 
 // 判断某个键是否在当前帧刚刚按下。按住不放时只会在第一次按下的那一帧返回
-// true，适合发射子弹、切换状态等只触发一次的操作。
+// true，按键合并和小键盘映射规则与 bgt_key_down() 相同。适合发射子弹、
+// 切换状态等只触发一次的操作。
 bool bgt_key_pressed(int key);
 
-// 判断某个键是否在当前帧刚刚松开。适合处理“松手时确认”这类操作。
+// 判断某个键是否在当前帧刚刚松开。按键合并和小键盘映射规则与
+// bgt_key_down() 相同，适合处理“松手时确认”这类操作。
 bool bgt_key_released(int key);
 
 // 返回鼠标当前 x 坐标，坐标值使用窗口逻辑坐标。
