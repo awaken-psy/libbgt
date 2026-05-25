@@ -70,6 +70,15 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_text examples/03_text.cpp)
     bgt_add_example(bgt_input examples/04_input.cpp)
     bgt_add_example(bgt_transparency examples/05_transparency.cpp)
+    bgt_add_example(bgt_sudoku examples/06_sudoku.cpp)
+
+    add_custom_command(
+        TARGET bgt_sudoku
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/examples/06_sudoku_puzzle.txt"
+                "$<TARGET_FILE_DIR:bgt_sudoku>/06_sudoku_puzzle.txt"
+        VERBATIM)
 endif()
 
 if(BGT_BUILD_TESTS)
