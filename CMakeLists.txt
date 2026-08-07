@@ -35,8 +35,8 @@ else()
     set(SDLTTF_VENDORED ON CACHE BOOL "" FORCE)
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
-    add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
-    add_subdirectory(third_party/SDL_ttf EXCLUDE_FROM_ALL)
+    add_subdirectory(third_party/SDL SYSTEM EXCLUDE_FROM_ALL)
+    add_subdirectory(third_party/SDL_ttf SYSTEM EXCLUDE_FROM_ALL)
 endif()
 
 add_library(bgt ${BGT_LIBRARY_TYPE} src/bgt.cpp)
