@@ -120,8 +120,8 @@ bool bgt_open_window_resizable(int width, int height, const char title[]);
 bool bgt_window_is_open();
 
 // 刷新窗口画面，并处理键盘、鼠标、窗口关闭等系统事件。每一帧绘图结束后
-// 都应该调用一次该函数；bgt_key_pressed()、bgt_mouse_pressed() 这类“刚按下”
-// 的状态也会以这个函数为帧边界进行更新。
+// 都应该调用一次该函数；bgt_key_just_pressed()、bgt_mouse_just_pressed()
+// 这类“刚按下” 的状态也会以这个函数为帧边界进行更新。
 void bgt_update_window();
 
 // 关闭窗口并释放 libbgt 内部持有的 SDL3、SDL3_ttf、字体等资源。程序正常
@@ -244,16 +244,16 @@ int bgt_text_height(const char text[], int size);
 // 左右 Shift/Ctrl/Alt 会分别合并为 BGT_KEY_SHIFT、BGT_KEY_CTRL、BGT_KEY_ALT。
 // 小键盘在 Num Lock 开启时会映射为数字键；关闭时 2/4/6/8 会映射为方向键。
 // 适合持续移动这类“按住就一直生效”的操作。
-bool bgt_key_down(int key);
+bool bgt_key_is_down(int key);
 
 // 判断某个键是否在当前帧刚刚按下。按住不放时只会在第一次按下的那一帧返回
-// true，按键合并和小键盘映射规则与 bgt_key_down() 相同。适合发射子弹、
+// true，按键合并和小键盘映射规则与 bgt_key_is_down() 相同。适合发射子弹、
 // 切换状态等只触发一次的操作。
-bool bgt_key_pressed(int key);
+bool bgt_key_just_pressed(int key);
 
 // 判断某个键是否在当前帧刚刚松开。按键合并和小键盘映射规则与
-// bgt_key_down() 相同，适合处理“松手时确认”这类操作。
-bool bgt_key_released(int key);
+// bgt_key_is_down() 相同，适合处理“松手时确认”这类操作。
+bool bgt_key_just_released(int key);
 
 // 返回鼠标当前 x 坐标，坐标值使用窗口逻辑坐标。
 int bgt_mouse_x();
@@ -263,13 +263,13 @@ int bgt_mouse_y();
 
 // 判断鼠标某个按键当前是否正被按住。button 使用 BGT_MOUSE_LEFT、
 // BGT_MOUSE_RIGHT 或 BGT_MOUSE_MIDDLE。
-bool bgt_mouse_down(int button);
+bool bgt_mouse_is_down(int button);
 
 // 判断鼠标某个按键是否在当前帧刚刚按下。适合处理点击开始、开始拖拽等操作。
-bool bgt_mouse_pressed(int button);
+bool bgt_mouse_just_pressed(int button);
 
 // 判断鼠标某个按键是否在当前帧刚刚松开。适合处理点击完成、结束拖拽等操作。
-bool bgt_mouse_released(int button);
+bool bgt_mouse_just_released(int button);
 
 // 返回当前帧鼠标滚轮的滚动量。正负方向由 SDL3 平台事件决定；没有滚动时返回 0。
 // 该值会在每次 bgt_update_window() 时更新。

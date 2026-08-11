@@ -131,7 +131,7 @@ void bgt_update_window();
 说明：
 
 - 每一帧通常调用一次。
-- `bgt_key_pressed` 和 `bgt_mouse_pressed` 等“刚按下”状态以帧为单位更新。
+- `bgt_key_just_pressed` 和 `bgt_mouse_just_pressed` 等“刚按下”状态以帧为单位更新。
 
 ### `bgt_close_window`
 
@@ -323,9 +323,9 @@ bool bgt_set_font(const char filename[], int size);
 ## 8. 键盘
 
 ```cpp
-bool bgt_key_down(int key);
-bool bgt_key_pressed(int key);
-bool bgt_key_released(int key);
+bool bgt_key_is_down(int key);
+bool bgt_key_just_pressed(int key);
+bool bgt_key_just_released(int key);
 ```
 
 ### 8.1 按键常量
@@ -348,23 +348,23 @@ BGT_KEY_F1 ... BGT_KEY_F12
 
 ### 8.2 函数语义
 
-`bgt_key_down` 表示按键当前是否正在按住。
+`bgt_key_is_down` 表示按键当前是否正在按住。
 
 ```cpp
-if (bgt_key_down(BGT_KEY_LEFT)) {
+if (bgt_key_is_down(BGT_KEY_LEFT)) {
     x = x - 5;
 }
 ```
 
-`bgt_key_pressed` 表示按键是否在当前帧刚刚按下。
+`bgt_key_just_pressed` 表示按键是否在当前帧刚刚按下。
 
 ```cpp
-if (bgt_key_pressed(BGT_KEY_SPACE)) {
+if (bgt_key_just_pressed(BGT_KEY_SPACE)) {
     score = score + 1;
 }
 ```
 
-`bgt_key_released` 表示按键是否在当前帧刚刚松开。
+`bgt_key_just_released` 表示按键是否在当前帧刚刚松开。
 
 ## 9. 鼠标
 
@@ -372,9 +372,9 @@ if (bgt_key_pressed(BGT_KEY_SPACE)) {
 int bgt_mouse_x();
 int bgt_mouse_y();
 
-bool bgt_mouse_down(int button);
-bool bgt_mouse_pressed(int button);
-bool bgt_mouse_released(int button);
+bool bgt_mouse_is_down(int button);
+bool bgt_mouse_just_pressed(int button);
+bool bgt_mouse_just_released(int button);
 
 int bgt_mouse_wheel();
 void bgt_show_mouse();
@@ -392,7 +392,7 @@ BGT_MOUSE_MIDDLE
 ### 9.2 示例
 
 ```cpp
-if (bgt_mouse_down(BGT_MOUSE_LEFT)) {
+if (bgt_mouse_is_down(BGT_MOUSE_LEFT)) {
     bgt_fill_circle(bgt_mouse_x(), bgt_mouse_y(), 5);
 }
 ```
@@ -519,15 +519,15 @@ int bgt_text_width(const char text[], int size);
 int bgt_text_height(const char text[]);
 int bgt_text_height(const char text[], int size);
 
-bool bgt_key_down(int key);
-bool bgt_key_pressed(int key);
-bool bgt_key_released(int key);
+bool bgt_key_is_down(int key);
+bool bgt_key_just_pressed(int key);
+bool bgt_key_just_released(int key);
 
 int bgt_mouse_x();
 int bgt_mouse_y();
-bool bgt_mouse_down(int button);
-bool bgt_mouse_pressed(int button);
-bool bgt_mouse_released(int button);
+bool bgt_mouse_is_down(int button);
+bool bgt_mouse_just_pressed(int button);
+bool bgt_mouse_just_released(int button);
 int bgt_mouse_wheel();
 void bgt_show_mouse();
 void bgt_hide_mouse();

@@ -425,29 +425,31 @@ void draw_panel(const SudokuState &s)
 
 void handle_keyboard(SudokuState &s)
 {
-    if (bgt_key_pressed(BGT_KEY_LEFT)) {
+    if (bgt_key_just_pressed(BGT_KEY_LEFT)) {
         s.selected_col =
             s.selected_col > 0 ? s.selected_col - 1 : kGridSize - 1;
     }
-    if (bgt_key_pressed(BGT_KEY_RIGHT)) {
+    if (bgt_key_just_pressed(BGT_KEY_RIGHT)) {
         s.selected_col = (s.selected_col + 1) % kGridSize;
     }
-    if (bgt_key_pressed(BGT_KEY_UP)) {
+    if (bgt_key_just_pressed(BGT_KEY_UP)) {
         s.selected_row =
             s.selected_row > 0 ? s.selected_row - 1 : kGridSize - 1;
     }
-    if (bgt_key_pressed(BGT_KEY_DOWN)) {
+    if (bgt_key_just_pressed(BGT_KEY_DOWN)) {
         s.selected_row = (s.selected_row + 1) % kGridSize;
     }
-    if (bgt_key_pressed(BGT_KEY_SPACE) || bgt_key_pressed(BGT_KEY_TAB)) {
+    if (bgt_key_just_pressed(BGT_KEY_SPACE) ||
+        bgt_key_just_pressed(BGT_KEY_TAB)) {
         s.note_mode = !s.note_mode;
     }
-    if (bgt_key_pressed(BGT_KEY_BACKSPACE) || bgt_key_pressed(BGT_KEY_0)) {
+    if (bgt_key_just_pressed(BGT_KEY_BACKSPACE) ||
+        bgt_key_just_pressed(BGT_KEY_0)) {
         clear_selected_cell(s);
     }
 
     for (int digit = kMinDigit; digit <= kMaxDigit; ++digit) {
-        if (bgt_key_pressed(BGT_KEY_0 + digit)) {
+        if (bgt_key_just_pressed(BGT_KEY_0 + digit)) {
             place_digit(s, digit);
         }
     }
@@ -478,7 +480,7 @@ void handle_panel_click(SudokuState &s, int mouse_x, int mouse_y)
 
 void handle_mouse(SudokuState &s)
 {
-    if (!bgt_mouse_pressed(BGT_MOUSE_LEFT)) {
+    if (!bgt_mouse_just_pressed(BGT_MOUSE_LEFT)) {
         return;
     }
     const int mouse_x = bgt_mouse_x();

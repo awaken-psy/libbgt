@@ -1144,7 +1144,7 @@ int bgt_text_height(const char text[], int size)
     return text_size_impl(state(), text, size, false);
 }
 
-bool bgt_key_down(int key)
+bool bgt_key_is_down(int key)
 {
     const State &s = state();
     if (key < 0 || key >= kMaxPublicKey) {
@@ -1153,7 +1153,7 @@ bool bgt_key_down(int key)
     return s.keys[static_cast<std::size_t>(key)];
 }
 
-bool bgt_key_pressed(int key)
+bool bgt_key_just_pressed(int key)
 {
     const State &s = state();
     if (key < 0 || key >= kMaxPublicKey) {
@@ -1163,7 +1163,7 @@ bool bgt_key_pressed(int key)
     return s.keys[index] && !s.previous_keys[index];
 }
 
-bool bgt_key_released(int key)
+bool bgt_key_just_released(int key)
 {
     const State &s = state();
     if (key < 0 || key >= kMaxPublicKey) {
@@ -1183,13 +1183,13 @@ int bgt_mouse_y()
     return state().mouse_y;
 }
 
-bool bgt_mouse_down(int button)
+bool bgt_mouse_is_down(int button)
 {
     const int index = mouse_index(button);
     return index != 0 && state().mouse_buttons[static_cast<std::size_t>(index)];
 }
 
-bool bgt_mouse_pressed(int button)
+bool bgt_mouse_just_pressed(int button)
 {
     const int index = mouse_index(button);
     if (index == 0) {
@@ -1201,7 +1201,7 @@ bool bgt_mouse_pressed(int button)
            !s.previous_mouse_buttons[button_index];
 }
 
-bool bgt_mouse_released(int button)
+bool bgt_mouse_just_released(int button)
 {
     const int index = mouse_index(button);
     if (index == 0) {

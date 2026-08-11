@@ -47,7 +47,7 @@
 - `bgt_draw_*` 绘制轮廓。
 - `bgt_fill_*` 绘制填充图形。
 - `bgt_draw_text` 显示中文或英文文字。
-- `bgt_key_down`、`bgt_mouse_x`、`bgt_mouse_y` 获取输入。
+- `bgt_key_is_down`、`bgt_mouse_x`、`bgt_mouse_y` 获取输入。
 - `bgt_update_window` 刷新画面并处理事件。
 - `bgt_window_is_open` 判断程序是否继续运行。
 
@@ -64,10 +64,10 @@ int main()
     int y = 300;
 
     while (bgt_window_is_open()) {
-        if (bgt_key_down(BGT_KEY_LEFT))  x = x - 5;
-        if (bgt_key_down(BGT_KEY_RIGHT)) x = x + 5;
-        if (bgt_key_down(BGT_KEY_UP))    y = y - 5;
-        if (bgt_key_down(BGT_KEY_DOWN))  y = y + 5;
+        if (bgt_key_is_down(BGT_KEY_LEFT))  x = x - 5;
+        if (bgt_key_is_down(BGT_KEY_RIGHT)) x = x + 5;
+        if (bgt_key_is_down(BGT_KEY_UP))    y = y - 5;
+        if (bgt_key_is_down(BGT_KEY_DOWN))  y = y + 5;
 
         bgt_clear_screen(BGT_WHITE);
         bgt_set_color(BGT_RED);

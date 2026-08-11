@@ -26,25 +26,25 @@ int main()
     while (bgt_window_is_open()) {
         const double dt = bgt_delta_time();
 
-        if (bgt_key_down(BGT_KEY_LEFT) || bgt_key_down(BGT_KEY_A)) {
+        if (bgt_key_is_down(BGT_KEY_LEFT) || bgt_key_is_down(BGT_KEY_A)) {
             x -= kSpeed * dt;
         }
-        if (bgt_key_down(BGT_KEY_RIGHT) || bgt_key_down(BGT_KEY_D)) {
+        if (bgt_key_is_down(BGT_KEY_RIGHT) || bgt_key_is_down(BGT_KEY_D)) {
             x += kSpeed * dt;
         }
-        if (bgt_key_down(BGT_KEY_UP) || bgt_key_down(BGT_KEY_W)) {
+        if (bgt_key_is_down(BGT_KEY_UP) || bgt_key_is_down(BGT_KEY_W)) {
             y -= kSpeed * dt;
         }
-        if (bgt_key_down(BGT_KEY_DOWN) || bgt_key_down(BGT_KEY_S)) {
+        if (bgt_key_is_down(BGT_KEY_DOWN) || bgt_key_is_down(BGT_KEY_S)) {
             y += kSpeed * dt;
         }
 
-        if (bgt_mouse_pressed(BGT_MOUSE_LEFT)) {
+        if (bgt_mouse_just_pressed(BGT_MOUSE_LEFT)) {
             x = bgt_mouse_x();
             y = bgt_mouse_y();
             color = BGT_ORANGE;
         }
-        if (bgt_mouse_pressed(BGT_MOUSE_RIGHT)) {
+        if (bgt_mouse_just_pressed(BGT_MOUSE_RIGHT)) {
             color = BGT_PURPLE;
         }
 
@@ -52,10 +52,10 @@ int main()
         radius = radius < 15 ? 15 : radius;
         radius = radius > 90 ? 90 : radius;
 
-        if (bgt_key_pressed(BGT_KEY_SPACE)) {
+        if (bgt_key_just_pressed(BGT_KEY_SPACE)) {
             color = BGT_GREEN;
         }
-        if (bgt_key_pressed(BGT_KEY_ESCAPE)) {
+        if (bgt_key_just_pressed(BGT_KEY_ESCAPE)) {
             bgt_close_window();
             break;
         }
