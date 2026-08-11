@@ -10,6 +10,23 @@
 #define BGT_VERSION_MINOR 1
 #define BGT_VERSION_PATCH 0
 
+#ifdef _MSC_VER
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "winmm.lib")
+#pragma comment(lib, "imm32.lib")
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "oleaut32.lib")
+#pragma comment(lib, "version.lib")
+#pragma comment(lib, "uuid.lib")
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "dinput8.lib")
+#pragma comment(lib, "usp10.lib")
+#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "rpcrt4.lib")
+#endif
+
 #define BGT_BLACK 0xFF000000
 #define BGT_WHITE 0xFFFFFFFF
 #define BGT_RED 0xFFFF0000

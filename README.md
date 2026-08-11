@@ -93,6 +93,34 @@ cmake --build build
 
 当前仓库包含首版基础 API 实现、CMake 构建脚本和一个最小示例。中文字体文件由 `assets/fonts/NotoSansSC-Regular.otf` 提供，仓库使用者需要确保该文件存在。
 
+## MSVC 二进制分发
+
+面向 Visual Studio 使用者时，可以把 libbgt、SDL3、SDL3_ttf 及其字体栈的
+静态库合并为一个 `bgt_vendored.lib`。使用者不需要复制或链接 SDL DLL：
+
+```powershell
+cmake -S . -B build-dist -G "Visual Studio 18 2026" -A x64 `
+  -DBGT_BUILD_VENDORED=ON -DBGT_BUILD_EXAMPLES=OFF
+cmake --build build-dist --config Release
+cmake --install build-dist --config Release --prefix package
+```
+
+安装目录包含：
+
+```text
+package/
+  bin/assets/fonts/NotoSansSC-Regular.otf
+  include/bgt.h
+  lib/bgt_vendored.lib
+```
+
+使用者在 Visual Studio 中添加 `include` 目录、`lib` 目录和
+`bgt_vendored.lib` 即可。头文件会为 MSVC 自动声明 SDL 所需的 Windows 系统
+库，因此无需逐项配置 SDL 的传递依赖。字体仍需放在程序 exe 旁边的
+`assets/fonts` 目录中。
+
+也可以在构建目录运行 `cpack -C Release`，直接生成同样内容的 ZIP 包。
+
 ## 文档
 
 - [设计文档](docs/design.md)

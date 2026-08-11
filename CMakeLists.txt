@@ -2,12 +2,27 @@ cmake_minimum_required(VERSION 3.22)
 
 project(libbgt VERSION 0.1.0 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Treat all project and vendored dependency sources as UTF-8 when using the
+# MSVC command-line interface. This also prevents C4819 warnings from sources
+# containing characters that are not representable in the active code page.
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
 
 option(BGT_BUILD_EXAMPLES "Build libbgt examples" ON)
 option(BGT_BUILD_TESTS "Build libbgt tests" OFF)
 option(BGT_BUILD_SHARED "Build libbgt as a shared library" OFF)
+option(BGT_BUILD_VENDORED "Merge libbgt and vendored dependencies into one MSVC static library" OFF)
 option(BGT_USE_SYSTEM_SDL "Use system-installed SDL3 and SDL3_ttf packages" OFF)
+
+if(BGT_BUILD_VENDORED AND (NOT MSVC OR BGT_BUILD_SHARED OR BGT_USE_SYSTEM_SDL))
+    message(FATAL_ERROR
+        "BGT_BUILD_VENDORED requires MSVC, bundled SDL, and BGT_BUILD_SHARED=OFF")
+endif()
 
 set(BGT_LIBRARY_TYPE STATIC)
 if(BGT_BUILD_SHARED)
@@ -50,12 +65,40 @@ add_library(libbgt::bgt ALIAS bgt)
 
 target_compile_features(bgt PUBLIC cxx_std_20)
 set_target_properties(bgt PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
-target_include_directories(bgt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(
+    bgt
+    PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_compile_definitions(bgt PRIVATE BGT_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
-target_link_libraries(bgt PUBLIC SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
+if(BGT_BUILD_SHARED)
+    target_link_libraries(bgt PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
+else()
+    target_compile_definitions(bgt PUBLIC BGT_STATIC_DEFINE)
+    target_link_libraries(bgt PUBLIC SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
+endif()
+
+set_target_properties(bgt PROPERTIES
+    DEBUG_POSTFIX d
+    WINDOWS_EXPORT_ALL_SYMBOLS "${BGT_BUILD_SHARED}")
+
+if(BGT_BUILD_VENDORED)
+    set(BGT_VENDORED_LIBRARY
+        "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/bgt_vendored.lib")
+    add_custom_command(
+        OUTPUT "${BGT_VENDORED_LIBRARY}"
+        COMMAND "${CMAKE_AR}" /NOLOGO "/OUT:${BGT_VENDORED_LIBRARY}"
+                "$<TARGET_FILE:bgt>"
+                "$<TARGET_FILE:SDL3-static>"
+                "$<TARGET_FILE:SDL3_ttf-static>"
+        DEPENDS bgt SDL3-static SDL3_ttf-static
+        COMMENT "Merging libbgt and vendored dependencies"
+        VERBATIM)
+    add_custom_target(bgt_vendored ALL DEPENDS "${BGT_VENDORED_LIBRARY}")
+endif()
 
 if(MSVC)
-    target_compile_options(bgt PRIVATE /W4 /utf-8)
+    target_compile_options(bgt PRIVATE /W4)
 else()
     target_compile_options(bgt PRIVATE -Wall -Wextra -Wpedantic)
 endif()
@@ -66,9 +109,6 @@ if(BGT_BUILD_EXAMPLES)
         target_link_libraries(${target} PRIVATE libbgt::bgt)
         set_target_properties(${target} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
 
-        if(MSVC)
-            target_compile_options(${target} PRIVATE /utf-8)
-        endif()
     endfunction()
 
     bgt_add_example(bgt_hello examples/01_hello.cpp)
@@ -90,3 +130,23 @@ endif()
 if(BGT_BUILD_TESTS)
     enable_testing()
 endif()
+
+if(BGT_BUILD_VENDORED)
+    install(FILES "${BGT_VENDORED_LIBRARY}"
+        TYPE LIB)
+else()
+    install(
+        TARGETS bgt
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+endif()
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/bgt.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/"
+    DESTINATION "${CMAKE_INSTALL_BINDIR}/assets")
+
+set(CPACK_GENERATOR ZIP)
+set(CPACK_PACKAGE_FILE_NAME
+    "libbgt-${PROJECT_VERSION}-msvc-x64")
+include(CPack)
