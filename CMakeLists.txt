@@ -17,6 +17,11 @@ endif()
 if(BGT_USE_SYSTEM_SDL)
     find_package(SDL3 CONFIG REQUIRED)
     find_package(SDL3_ttf CONFIG REQUIRED)
+
+    if(NOT TARGET SDL3::SDL3-static OR NOT TARGET SDL3_ttf::SDL3_ttf-static)
+        message(FATAL_ERROR
+            "BGT_USE_SYSTEM_SDL requires SDL3 and SDL3_ttf packages with static targets")
+    endif()
 else()
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
         message(FATAL_ERROR "third_party/SDL is missing. Run: git submodule update --init --recursive")
@@ -25,11 +30,12 @@ else()
         message(FATAL_ERROR "third_party/SDL_ttf is missing. Run: git submodule update --init --recursive")
     endif()
 
-    # set the output directory for built objects.
-    # This makes sure that the dynamic library goes into the build directory automatically.
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
-
+    # Build the bundled dependencies only as static libraries. Besides making the
+    # examples self-contained, the explicit settings prevent SDL3::SDL3 from
+    # selecting SDL's shared target when both variants are available.
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(SDLTTF_SAMPLES OFF CACHE BOOL "" FORCE)
     set(SDLTTF_TESTS OFF CACHE BOOL "" FORCE)
     set(SDLTTF_VENDORED ON CACHE BOOL "" FORCE)
@@ -46,7 +52,7 @@ target_compile_features(bgt PUBLIC cxx_std_20)
 set_target_properties(bgt PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
 target_include_directories(bgt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_compile_definitions(bgt PRIVATE BGT_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
-target_link_libraries(bgt PUBLIC SDL3::SDL3 SDL3_ttf::SDL3_ttf)
+target_link_libraries(bgt PUBLIC SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
 
 if(MSVC)
     target_compile_options(bgt PRIVATE /W4 /utf-8)
