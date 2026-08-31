@@ -143,7 +143,7 @@ SDL3 与 SDL3_ttf 通过 Git Submodule 管理，使用者克隆后初始化子�
 静态库合并为一个 `bgt_vendored.lib`。使用者不需要复制或链接 SDL DLL：
 
 ```powershell
-cmake -S . -B build-dist -G "Visual Studio 18 2026" -A x64
+cmake -S . -B build-dist -G "Visual Studio 18 2026" -A x64 `
   -DBGT_BUILD_VENDORED=ON -DBGT_BUILD_EXAMPLES=OFF
 cmake --build build-dist --config Release
 cmake --install build-dist --config Release --prefix package
