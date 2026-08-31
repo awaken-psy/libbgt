@@ -42,6 +42,64 @@ int main()
 }
 ```
 
+## 快速开始
+
+### 1. 获取源码
+
+SDL3 与 SDL3_ttf 以 Git Submodule 存放在 `third_party/` 下，克隆时一并拉取：
+
+```bash
+git clone --recurse-submodules https://github.com/Tongji-High-level-Language-Programming/libbgt.git
+cd libbgt
+```
+
+如果克隆时没有加 `--recurse-submodules`，已有仓库可以随时补拉子模块：
+
+```bash
+git submodule update --init --recursive
+```
+
+### 2. 构建
+
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+默认把 `libbgt` 编译为静态库，并构建全部 7 个示例程序。
+
+### 3. 运行示例
+
+示例程序生成在 `build/` 目录下；使用 Visual Studio 等多配置生成器时位于
+`build/<配置>/`（例如 `build/Debug/`）。
+
+```powershell
+# Windows PowerShell
+.\build\bgt_hello.exe
+.\build\bgt_hanoi.exe
+```
+
+```bash
+# Linux / macOS
+./build/bgt_hello
+./build/bgt_hanoi
+```
+
+先运行 `bgt_hello` 确认环境正常，再运行 `bgt_hanoi`（汉诺塔演示：三态流程、
+手动游玩与递归自动求解，配套作业见[作业设计](docs/exercises.md)）。
+
+## 常用配置项
+
+| 选项 | 默认值 | 说明 |
+|------|--------|------|
+| `BGT_BUILD_EXAMPLES` | `ON` | 编译示例程序 |
+| `BGT_BUILD_SHARED` | `OFF` | 编译为共享库（默认静态） |
+| `BGT_BUILD_VENDORED` | `OFF` | MSVC 下把库与依赖合并为单个 `bgt_vendored.lib`（见下文） |
+| `BGT_USE_SYSTEM_SDL` | `OFF` | 使用系统安装的 SDL3 / SDL3_ttf 包 |
+
+如改用系统安装的依赖，请确保其同时提供静态 CMake 目标，然后配置
+`-DBGT_USE_SYSTEM_SDL=ON`。
+
 ## 项目结构
 
 ```text
@@ -51,6 +109,7 @@ libbgt/
   docs/
     design.md
     api-v0.md
+    exercises.md
   include/
     bgt.h
   src/
@@ -69,31 +128,14 @@ libbgt/
     SDL_ttf/
 ```
 
-## 依赖管理
-
-依赖通过 Git Submodule 放在 `third_party/` 下。
-
-```bash
-git submodule add https://github.com/libsdl-org/SDL.git third_party/SDL
-git submodule add https://github.com/libsdl-org/SDL_ttf.git third_party/SDL_ttf
-git submodule update --init --recursive
-```
-
-## 构建方式
-
-项目本身使用 CMake 构建。
-
-```bash
-cmake -S . -B build
-cmake --build build
-```
-
-如改用系统安装的依赖，请确保其同时提供静态 CMake 目标，然后配置
-`-DBGT_USE_SYSTEM_SDL=ON`。
-
 当前仓库包含首版基础 API 实现、CMake 构建脚本和 7 个示例程序。文本绘制默认
 使用系统自带的中文字体（Windows 下通常是微软雅黑），不依赖仓库内的字体文件；
 系统缺少中文字体时，可以用 `bgt_set_font()` 指定可用字体。
+
+## 依赖管理
+
+SDL3 与 SDL3_ttf 通过 Git Submodule 管理，使用者克隆后初始化子模块即可（命令
+见[快速开始](#快速开始)）。
 
 ## MSVC 二进制分发
 
