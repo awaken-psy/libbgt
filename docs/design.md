@@ -405,6 +405,7 @@ libbgt/
     04_input.cpp
     05_transparency.cpp
     06_sudoku.cpp
+    07_hanoi.cpp
   third_party/
     SDL/
     SDL_ttf/
@@ -421,6 +422,7 @@ libbgt/
 04_input.cpp           键盘与鼠标输入
 05_transparency.cpp    透明与颜色混合
 06_sudoku.cpp          综合小游戏（数独）
+07_hanoi.cpp           汉诺塔演示（三态流程 + 递归自动求解）
 ```
 
 示例原则：
@@ -516,7 +518,7 @@ libbgt/
 - `include/bgt.h`
 - `src/bgt.cpp`
 - `CMakeLists.txt`
-- `examples/` 下的 6 个示例（`01_hello.cpp` 到 `06_sudoku.cpp`）
+- `examples/` 下的 7 个示例（`01_hello.cpp` 到 `07_hanoi.cpp`）
 
 实现范围与 `docs/api-v0.md` 保持一致。文本绘制默认使用系统自带中文字体，
 不依赖仓库内的字体文件。

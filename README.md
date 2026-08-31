@@ -63,6 +63,7 @@ libbgt/
     05_transparency.cpp
     06_sudoku.cpp
     06_sudoku_puzzle.txt
+    07_hanoi.cpp
   third_party/
     SDL/
     SDL_ttf/
@@ -90,7 +91,7 @@ cmake --build build
 如改用系统安装的依赖，请确保其同时提供静态 CMake 目标，然后配置
 `-DBGT_USE_SYSTEM_SDL=ON`。
 
-当前仓库包含首版基础 API 实现、CMake 构建脚本和 6 个示例程序。文本绘制默认
+当前仓库包含首版基础 API 实现、CMake 构建脚本和 7 个示例程序。文本绘制默认
 使用系统自带的中文字体（Windows 下通常是微软雅黑），不依赖仓库内的字体文件；
 系统缺少中文字体时，可以用 `bgt_set_font()` 指定可用字体。
 
@@ -143,7 +144,7 @@ package/
 
 - `include/bgt.h`
 - `src/bgt.cpp`
-- `examples/` 下的 6 个示例（`01_hello.cpp` 到 `06_sudoku.cpp`）
+- `examples/` 下的 7 个示例（`01_hello.cpp` 到 `07_hanoi.cpp`）
 
 首版暂不提供：
 

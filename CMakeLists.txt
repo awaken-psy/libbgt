@@ -116,6 +116,7 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_input examples/04_input.cpp)
     bgt_add_example(bgt_transparency examples/05_transparency.cpp)
     bgt_add_example(bgt_sudoku examples/06_sudoku.cpp)
+    bgt_add_example(bgt_hanoi examples/07_hanoi.cpp)
 
     add_custom_command(
         TARGET bgt_sudoku
