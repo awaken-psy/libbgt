@@ -24,12 +24,12 @@ constexpr int kTowerHeight = 240;
 constexpr int kBaseY = 540;
 
 constexpr int kDiskHeight = 36;
-constexpr int kDiskGap = 3;
 constexpr int kMinDiskWidth = 48;
 constexpr int kDiskWidthStep = 30;
 
 constexpr int kMoveSpeed = 2;     // 每秒完成的移动数
 constexpr double kAutoInterval = 0.6;  // 自动演示中两次移动的间隔（秒）
+constexpr double kSelectRepeat = 0.18; // 按住方向键时重复选柱的间隔（秒）
 constexpr int kMaxAutoSteps = (1 << kDisks) - 1;
 
 constexpr int kStateStart = 0;
@@ -45,6 +45,7 @@ int towers[kTowerCount][kDisks];    // 每根柱子从下往上存的盘号
 int heights[kTowerCount];           // 每根柱子当前盘数
 int state = kStateStart;
 int selected = 0;                   // 当前高亮柱子
+double select_repeat_timer = 0.0;   // 按住方向键时的重复选柱计时
 int move_count = 0;
 
 bool holding = false;               // 隐式状态：是否拿着盘子
@@ -85,6 +86,7 @@ void reset_game()
         heights[0] += 1;
     }
     selected = 0;
+    select_repeat_timer = 0.0;
     move_count = 0;
     holding = false;
     anim_t = 1.0;
@@ -141,6 +143,34 @@ void advance_animation()
     }
 }
 
+// ---- 选柱：点按立即移动一格，按住时按 kSelectRepeat 间隔重复 ----
+
+void move_selection()
+{
+    select_repeat_timer += bgt_delta_time();
+    const bool left_held = bgt_key_is_down(BGT_KEY_LEFT);
+    const bool right_held = bgt_key_is_down(BGT_KEY_RIGHT);
+    if (left_held && !right_held) {
+        if (bgt_key_just_pressed(BGT_KEY_LEFT) ||
+            select_repeat_timer >= kSelectRepeat) {
+            if (selected > 0) {
+                selected -= 1;
+            }
+            select_repeat_timer = 0.0;
+        }
+    } else if (right_held && !left_held) {
+        if (bgt_key_just_pressed(BGT_KEY_RIGHT) ||
+            select_repeat_timer >= kSelectRepeat) {
+            if (selected < kTowerCount - 1) {
+                selected += 1;
+            }
+            select_repeat_timer = 0.0;
+        }
+    } else {
+        select_repeat_timer = 0.0;
+    }
+}
+
 void update_playing()
 {
     if (bgt_key_just_pressed(BGT_KEY_R)) {
@@ -182,12 +212,7 @@ void update_playing()
     }
 
     if (anim_t >= 1.0) {
-        if (bgt_key_is_down(BGT_KEY_LEFT) && selected > 0) {
-            selected -= 1;
-        }
-        if (bgt_key_is_down(BGT_KEY_RIGHT) && selected < kTowerCount - 1) {
-            selected += 1;
-        }
+        move_selection();
 
         if (!holding) {
             if (bgt_key_just_pressed(BGT_KEY_SPACE) && heights[selected] > 0) {
@@ -221,11 +246,11 @@ void draw_disks()
             const int disk = towers[t][i];
             const int w = disk_width(disk);
             const int x = tower_x(t) - w / 2;
-            const int y = kBaseY - (i + 1) * kDiskHeight + kDiskGap;
+            const int y = kBaseY - (i + 1) * kDiskHeight;
             bgt_set_color(kDiskColors[disk]);
-            bgt_fill_rect(x, y, w, kDiskHeight - (2 * kDiskGap));
+            bgt_fill_rect(x, y, w, kDiskHeight);
             bgt_set_color(BGT_BLACK);
-            bgt_draw_rect(x, y, w, kDiskHeight - (2 * kDiskGap));
+            bgt_draw_rect(x, y, w, kDiskHeight);
         }
     }
 }
@@ -267,9 +292,9 @@ void draw_held_disk()
 
     const int w = disk_width(held_disk);
     bgt_set_color(kDiskColors[held_disk]);
-    bgt_fill_rect(x - w / 2, y, w, kDiskHeight - (2 * kDiskGap));
+    bgt_fill_rect(x - w / 2, y, w, kDiskHeight);
     bgt_set_color(BGT_BLACK);
-    bgt_draw_rect(x - w / 2, y, w, kDiskHeight - (2 * kDiskGap));
+    bgt_draw_rect(x - w / 2, y, w, kDiskHeight);
 }
 
 void draw_marker()
