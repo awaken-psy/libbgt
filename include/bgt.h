@@ -158,20 +158,21 @@ int bgt_window_height();
 void bgt_set_window_title(const char title[]);
 
 // 使用红、绿、蓝三个颜色分量创建一个不透明颜色。每个分量建议取 0 到 255；
-// 超出范围的值会被限制到有效范围。返回值可以传给 bgt_set_color() 或
-// bgt_clear_screen(color)。
-int bgt_rgb(int r, int g, int b);
+// 超出范围的值会被限制到有效范围。返回值是一个无符号整数颜色值，可以传给
+// bgt_set_color() 或 bgt_clear_screen(color)。
+unsigned bgt_rgb(int r, int g, int b);
 
 // 使用红、绿、蓝、透明度四个分量创建颜色。a 表示不透明度：0 是完全透明，
-// 255 是完全不透明。返回值可以作为普通颜色使用。
-int bgt_rgba(int r, int g, int b, int a);
+// 255 是完全不透明。返回值是一个无符号整数颜色值，可以作为普通颜色使用。
+unsigned bgt_rgba(int r, int g, int b, int a);
 
 // 设置当前绘图颜色。后续的点、线、矩形、圆、文字等绘制函数都会使用这个颜色，
-// 直到再次调用 bgt_set_color() 改变它。
-void bgt_set_color(int color);
+// 直到再次调用 bgt_set_color() 改变它。color 可以是 BGT_* 颜色常量、bgt_rgb()
+// 或 bgt_rgba() 的返回值。
+void bgt_set_color(unsigned color);
 
 // 返回当前绘图颜色。这个函数通常用于临时保存颜色，之后再恢复原来的颜色。
-int bgt_get_color();
+unsigned bgt_get_color();
 
 // 使用默认背景色清空整个窗口。清屏只改变当前帧的画面，不会自动显示到屏幕；
 // 清屏和绘图完成后仍然需要调用 bgt_update_window()。
@@ -179,7 +180,7 @@ void bgt_clear_screen();
 
 // 使用指定颜色清空整个窗口。color 可以是 BGT_WHITE 这样的预定义颜色，也可以是
 // bgt_rgb() 或 bgt_rgba() 创建的颜色。
-void bgt_clear_screen(int color);
+void bgt_clear_screen(unsigned color);
 
 // 在 (x, y) 位置绘制一个点。坐标系左上角是 (0, 0)，x 向右增加，y 向下增加。
 // 如果点在窗口外部，库会自动忽略它。

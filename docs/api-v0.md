@@ -172,10 +172,16 @@ BGT_TRANSPARENT
 ### 4.2 颜色函数
 
 ```cpp
-int bgt_rgb(int r, int g, int b);
-int bgt_rgba(int r, int g, int b, int a);
-void bgt_set_color(int color);
-int bgt_get_color();
+unsigned bgt_rgb(int r, int g, int b);
+unsigned bgt_rgba(int r, int g, int b, int a);
+void bgt_set_color(unsigned color);
+unsigned bgt_get_color();
+```
+
+颜色值统一使用无符号整数 `unsigned`，与颜色常量类型一致，可以直接放进数组：
+
+```cpp
+unsigned palette[3] = {BGT_RED, BGT_BLUE, BGT_GREEN};
 ```
 
 ### `bgt_rgb`
@@ -217,7 +223,7 @@ bgt_fill_circle(100, 100, 30);
 
 ```cpp
 void bgt_clear_screen();
-void bgt_clear_screen(int color);
+void bgt_clear_screen(unsigned color);
 ```
 
 ### `bgt_clear_screen`
@@ -496,13 +502,13 @@ int bgt_window_width();
 int bgt_window_height();
 void bgt_set_window_title(const char title[]);
 
-int bgt_rgb(int r, int g, int b);
-int bgt_rgba(int r, int g, int b, int a);
-void bgt_set_color(int color);
-int bgt_get_color();
+unsigned bgt_rgb(int r, int g, int b);
+unsigned bgt_rgba(int r, int g, int b, int a);
+void bgt_set_color(unsigned color);
+unsigned bgt_get_color();
 
 void bgt_clear_screen();
-void bgt_clear_screen(int color);
+void bgt_clear_screen(unsigned color);
 
 void bgt_draw_point(int x, int y);
 void bgt_draw_line(int x1, int y1, int x2, int y2);

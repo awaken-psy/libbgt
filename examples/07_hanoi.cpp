@@ -36,8 +36,8 @@ constexpr int kStateStart = 0;
 constexpr int kStatePlaying = 1;
 constexpr int kStateDone = 2;
 
-constexpr int kDiskColors[kDisks + 1] = {BGT_BLACK, BGT_RED, BGT_BLUE,
-                                         BGT_GREEN, BGT_ORANGE};
+constexpr unsigned kDiskColors[kDisks + 1] = {BGT_BLACK, BGT_RED, BGT_BLUE,
+                                              BGT_GREEN, BGT_ORANGE};
 
 // ---- 局面数据（不引入类、结构体和指针，全部用全局变量与数组）----
 

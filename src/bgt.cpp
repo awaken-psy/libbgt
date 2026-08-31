@@ -45,7 +45,7 @@ struct State {
     bool closing = false;
     int width = 0;
     int height = 0;
-    int color = BGT_WHITE;
+    unsigned color = BGT_WHITE;
     int line_width = 1;
     int font_size = kDefaultFontSize;
     int fps_limit = 0;
@@ -146,36 +146,36 @@ int clamp_byte(int value)
     return std::clamp(value, 0, 255);
 }
 
-std::uint8_t color_a(int color)
+std::uint8_t color_a(unsigned color)
 {
-    return static_cast<std::uint8_t>(
-        (static_cast<std::uint32_t>(color) >> 24U) & 0xFFU);
+    return static_cast<std::uint8_t>((static_cast<std::uint32_t>(color) >> 24U) &
+                                     0xFFU);
 }
 
-std::uint8_t color_r(int color)
+std::uint8_t color_r(unsigned color)
 {
     return static_cast<std::uint8_t>(
         (static_cast<std::uint32_t>(color) >> 16U) & 0xFFU);
 }
 
-std::uint8_t color_g(int color)
+std::uint8_t color_g(unsigned color)
 {
     return static_cast<std::uint8_t>((static_cast<std::uint32_t>(color) >> 8U) &
                                      0xFFU);
 }
 
-std::uint8_t color_b(int color)
+std::uint8_t color_b(unsigned color)
 {
     return static_cast<std::uint8_t>(static_cast<std::uint32_t>(color) & 0xFFU);
 }
 
-SDL_Color to_sdl_color(int color)
+SDL_Color to_sdl_color(unsigned color)
 {
     return SDL_Color{color_r(color), color_g(color), color_b(color),
                      color_a(color)};
 }
 
-void apply_render_color(State &s, int color)
+void apply_render_color(State &s, unsigned color)
 {
     if (s.renderer == nullptr) {
         return;
@@ -831,29 +831,29 @@ void bgt_set_window_title(const char title[])
     }
 }
 
-int bgt_rgb(int r, int g, int b)
+unsigned bgt_rgb(int r, int g, int b)
 {
     return bgt_rgba(r, g, b, 255);
 }
 
-int bgt_rgba(int r, int g, int b, int a)
+unsigned bgt_rgba(int r, int g, int b, int a)
 {
     const std::uint32_t color =
         (static_cast<std::uint32_t>(clamp_byte(a)) << 24U) |
         (static_cast<std::uint32_t>(clamp_byte(r)) << 16U) |
         (static_cast<std::uint32_t>(clamp_byte(g)) << 8U) |
         static_cast<std::uint32_t>(clamp_byte(b));
-    return static_cast<int>(color);
+    return static_cast<unsigned>(color);
 }
 
-void bgt_set_color(int color)
+void bgt_set_color(unsigned color)
 {
     State &s = state();
     s.color = color;
     apply_render_color(s, color);
 }
 
-int bgt_get_color()
+unsigned bgt_get_color()
 {
     return state().color;
 }
@@ -863,7 +863,7 @@ void bgt_clear_screen()
     bgt_clear_screen(BGT_BLACK);
 }
 
-void bgt_clear_screen(int color)
+void bgt_clear_screen(unsigned color)
 {
     State &s = state();
     if (!ensure_open(s)) {

@@ -24,7 +24,7 @@
 - 不要求学生使用指针。
 - 不要求学生手动管理图形资源生命周期。
 - 不要求学生理解 SDL 事件、字体、纹理、Surface 或 Renderer。
-- 对外参数尽量使用 `int`、`double`、`bool`、颜色常量和字符串字面量。
+- 对外参数尽量使用 `int`、`double`、`bool`、`unsigned`（颜色值）、颜色常量和字符串字面量。
 - 所有基础函数统一使用 `snake_case`。
 - 所有基础函数统一使用 `bgt_` 前缀。
 - 所有基础常量统一使用 `BGT_` 前缀。
@@ -211,7 +211,7 @@ bgt.cpp
 
 ### 7.2 颜色
 
-颜色对外表现为整数值。
+颜色对外表现为无符号整数 `unsigned`，与颜色常量同类型，可以直接放进数组。
 
 基础接口提供预定义颜色常量：
 
@@ -237,8 +237,8 @@ BGT_TRANSPARENT
 自定义颜色通过函数创建：
 
 ```cpp
-int bgt_rgb(int r, int g, int b);
-int bgt_rgba(int r, int g, int b, int a);
+unsigned bgt_rgb(int r, int g, int b);
+unsigned bgt_rgba(int r, int g, int b, int a);
 ```
 
 教学时可以先只使用颜色常量，后续再引入 RGB。
