@@ -17,6 +17,7 @@ int main()
     }
 
     bgt_set_fps_limit(kTargetFps);
+    bgt_set_background(bgt_rgb(245, 247, 250));
 
     double x = 450.0;
     double y = 300.0;
@@ -59,8 +60,6 @@ int main()
             bgt_close_window();
             break;
         }
-
-        bgt_clear_screen(bgt_rgb(245, 247, 250));
 
         bgt_set_color(BGT_DARK_GRAY);
         bgt_draw_text(40, 32, "方向键或 WASD 移动，鼠标左键跳转，滚轮改变大小",

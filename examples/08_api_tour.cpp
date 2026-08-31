@@ -91,7 +91,7 @@ int main()
             // =====================================================
             // 板块 1：窗口与主循环
             // =====================================================
-            bgt_clear_screen(bgt_rgb(255, 248, 235));
+            bgt_set_background(bgt_rgb(255, 248, 235));
             bgt_set_window_title("libbgt 入门演示 - 板块 1：窗口与主循环");
 
             bgt_set_color(BGT_BLACK);
@@ -109,6 +109,9 @@ int main()
             bgt_draw_text(40, 254,
                           "bgt_close_window() 释放资源；也可以不写，程序结束时"
                           "会自动清理。", 20);
+            bgt_draw_text(40, 288,
+                          "画布由库负责：每帧更新后自动清成背景色"
+                          "（bgt_set_background），循环里只管画内容。", 20);
 
             // 查询窗口尺寸（逻辑坐标）。把数字变成文字用 sprintf ——
             // 用法和 printf 一样，只是把结果写进数组而不是屏幕。
@@ -125,7 +128,7 @@ int main()
             // =====================================================
             // 板块 2：颜色
             // =====================================================
-            bgt_clear_screen(bgt_rgb(250, 250, 250));
+            bgt_set_background(bgt_rgb(250, 250, 250));
             bgt_set_window_title("libbgt 入门演示 - 板块 2：颜色");
 
             bgt_set_color(BGT_BLACK);
@@ -196,7 +199,7 @@ int main()
             // =====================================================
             // 板块 3：基本图形
             // =====================================================
-            bgt_clear_screen(bgt_rgb(250, 250, 250));
+            bgt_set_background(bgt_rgb(250, 250, 250));
             bgt_set_window_title("libbgt 入门演示 - 板块 3：基本图形");
 
             bgt_set_color(BGT_BLACK);
@@ -252,7 +255,7 @@ int main()
             // =====================================================
             // 板块 4：文本
             // =====================================================
-            bgt_clear_screen(bgt_rgb(250, 250, 250));
+            bgt_set_background(bgt_rgb(250, 250, 250));
             bgt_set_window_title("libbgt 入门演示 - 板块 4：文本");
 
             bgt_set_color(BGT_BLACK);
@@ -291,7 +294,7 @@ int main()
             // =====================================================
             // 板块 5：键盘
             // =====================================================
-            bgt_clear_screen(bgt_rgb(250, 250, 250));
+            bgt_set_background(bgt_rgb(250, 250, 250));
             bgt_set_window_title("libbgt 入门演示 - 板块 5：键盘");
 
             bgt_set_color(BGT_BLACK);
@@ -346,7 +349,7 @@ int main()
             // =====================================================
             // 板块 6：鼠标
             // =====================================================
-            bgt_clear_screen(bgt_rgb(250, 250, 250));
+            bgt_set_background(bgt_rgb(250, 250, 250));
             bgt_set_window_title("libbgt 入门演示 - 板块 6：鼠标");
 
             bgt_set_color(BGT_BLACK);
@@ -404,8 +407,9 @@ int main()
             }
 
             // 松开：把预览变成实心圆，并持续画到下一次右键按下（见上面）。
-            // 只调用一次绘制是不够的——清屏后必须每帧重画才看得到，所以要
-            // 用变量记住"画完了吗 + 圆在哪"，靠下面的 if 每帧重画。
+            // 只调用一次绘制是不够的——库每帧自动清空画布（见板块 1 说明），
+            // 必须每帧重画才看得到，所以要用变量记住"画完了吗 + 圆在哪"，
+            // 靠下面的 if 每帧重画。
             if (bgt_mouse_just_released(BGT_MOUSE_RIGHT)) {
                 const int dx = bgt_mouse_x() - press_x;
                 const int dy = bgt_mouse_y() - press_y;
@@ -436,7 +440,7 @@ int main()
             // =====================================================
             // 板块 7：时间
             // =====================================================
-            bgt_clear_screen(bgt_rgb(250, 250, 250));
+            bgt_set_background(bgt_rgb(250, 250, 250));
             bgt_set_window_title("libbgt 入门演示 - 板块 7：时间");
 
             bgt_set_color(BGT_BLACK);
@@ -486,7 +490,7 @@ int main()
             // =====================================================
             // 板块 8：错误信息
             // =====================================================
-            bgt_clear_screen(bgt_rgb(250, 250, 250));
+            bgt_set_background(bgt_rgb(250, 250, 250));
             bgt_set_window_title("libbgt 入门演示 - 板块 8：错误信息");
 
             bgt_set_color(BGT_BLACK);

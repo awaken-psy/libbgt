@@ -15,10 +15,9 @@ int main()
 
     bgt_set_fps_limit(kTargetFps);
     bgt_set_font_size(26);
+    bgt_set_background(bgt_rgb(28, 32, 42));
 
     while (bgt_window_is_open()) {
-        bgt_clear_screen(bgt_rgb(28, 32, 42));
-
         const char *title = "中文文本和尺寸测量";
         const int title_width = bgt_text_width(title, 40);
         const int title_x = (bgt_window_width() - title_width) / 2;

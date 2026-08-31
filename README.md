@@ -24,10 +24,9 @@
 int main()
 {
     bgt_open_window(800, 600, "我的第一个图形程序");
+    bgt_set_background(BGT_WHITE);
 
     while (bgt_window_is_open()) {
-        bgt_clear_screen(BGT_WHITE);
-
         bgt_set_color(BGT_BLUE);
         bgt_fill_circle(400, 300, 50);
 

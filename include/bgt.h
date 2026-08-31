@@ -159,7 +159,7 @@ void bgt_set_window_title(const char title[]);
 
 // 使用红、绿、蓝三个颜色分量创建一个不透明颜色。每个分量建议取 0 到 255；
 // 超出范围的值会被限制到有效范围。返回值是一个无符号整数颜色值，可以传给
-// bgt_set_color() 或 bgt_clear_screen(color)。
+// bgt_set_color() 或 bgt_set_background()。
 unsigned bgt_rgb(int r, int g, int b);
 
 // 使用红、绿、蓝、透明度四个分量创建颜色。a 表示不透明度：0 是完全透明，
@@ -174,13 +174,10 @@ void bgt_set_color(unsigned color);
 // 返回当前绘图颜色。这个函数通常用于临时保存颜色，之后再恢复原来的颜色。
 unsigned bgt_get_color();
 
-// 使用默认背景色清空整个窗口。清屏只改变当前帧的画面，不会自动显示到屏幕；
-// 清屏和绘图完成后仍然需要调用 bgt_update_window()。
-void bgt_clear_screen();
-
-// 使用指定颜色清空整个窗口。color 可以是 BGT_WHITE 这样的预定义颜色，也可以是
-// bgt_rgb() 或 bgt_rgba() 创建的颜色。
-void bgt_clear_screen(unsigned color);
+// 设置画布底色。libbgt 会在每次 bgt_update_window() 结束时自动把画布清空成
+// 这个颜色，因此不需要（也没有）专门"清屏"的函数：每帧把要画的内容画完整即可，
+// 没画到的部分就是背景色。默认背景色是黑色；通常在进入主循环之前调用一次。
+void bgt_set_background(unsigned color);
 
 // 在 (x, y) 位置绘制一个点。坐标系左上角是 (0, 0)，x 向右增加，y 向下增加。
 // 如果点在窗口外部，库会自动忽略它。

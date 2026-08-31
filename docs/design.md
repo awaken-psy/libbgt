@@ -42,7 +42,7 @@
 学生只需要理解：
 
 - `bgt_open_window` 创建窗口。
-- `bgt_clear_screen` 清空画面。
+- `bgt_set_background` 设置背景色。
 - `bgt_set_color` 设置当前画笔颜色。
 - `bgt_draw_*` 绘制轮廓。
 - `bgt_fill_*` 绘制填充图形。
@@ -59,6 +59,7 @@
 int main()
 {
     bgt_open_window(800, 600, "移动小球");
+    bgt_set_background(BGT_WHITE);
 
     int x = 400;
     int y = 300;
@@ -69,7 +70,6 @@ int main()
         if (bgt_key_is_down(BGT_KEY_UP))    y = y - 5;
         if (bgt_key_is_down(BGT_KEY_DOWN))  y = y + 5;
 
-        bgt_clear_screen(BGT_WHITE);
         bgt_set_color(BGT_RED);
         bgt_fill_circle(x, y, 30);
         bgt_update_window();
@@ -138,7 +138,7 @@ int main()
 首版 `v0.1` 只提供最低必要能力：
 
 - 窗口创建、关闭、刷新。
-- 屏幕清空。
+- 背景色与画布自动清空。
 - 当前颜色设置。
 - 基本几何图形。
 - 中文文本绘制。
@@ -172,7 +172,7 @@ int main()
 ```text
 bgt_open_window
 bgt_window_is_open
-bgt_clear_screen
+bgt_set_background
 bgt_set_color
 bgt_draw_line
 bgt_fill_circle

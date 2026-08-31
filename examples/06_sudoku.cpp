@@ -502,12 +502,12 @@ int main()
     }
 
     bgt_set_fps_limit(kTargetFps);
+    bgt_set_background(kColorBackground);
 
     while (bgt_window_is_open()) {
         handle_keyboard(sudoku);
         handle_mouse(sudoku);
 
-        bgt_clear_screen(kColorBackground);
         draw_board(sudoku);
         draw_panel(sudoku);
         bgt_update_window();

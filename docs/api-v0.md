@@ -40,10 +40,9 @@
 int main()
 {
     bgt_open_window(800, 600, "你好 libbgt");
+    bgt_set_background(BGT_WHITE);
 
     while (bgt_window_is_open()) {
-        bgt_clear_screen(BGT_WHITE);
-
         bgt_set_color(BGT_BLUE);
         bgt_fill_circle(400, 300, 50);
 
@@ -131,6 +130,8 @@ void bgt_update_window();
 说明：
 
 - 每一帧通常调用一次。
+- 每次调用结束时，库会先把画布清空成背景色（见第 5 节），因此下一帧直接从
+  空白画布开始绘制。
 - `bgt_key_just_pressed` 和 `bgt_mouse_just_pressed` 等“刚按下”状态以帧为单位更新。
 
 ### `bgt_close_window`
@@ -219,22 +220,26 @@ bgt_set_color(BGT_RED);
 bgt_fill_circle(100, 100, 30);
 ```
 
-## 5. 清屏
+## 5. 背景色
 
 ```cpp
-void bgt_clear_screen();
-void bgt_clear_screen(unsigned color);
+void bgt_set_background(unsigned color);
 ```
 
-### `bgt_clear_screen`
+### `bgt_set_background`
 
-清空整个窗口。
+设置画布底色。
 
 ```cpp
-bgt_clear_screen(BGT_WHITE);
+bgt_set_background(BGT_WHITE);
 ```
 
-无参数版本使用当前背景色或默认背景色。
+说明：
+
+- libbgt 在每次 `bgt_update_window()` 结束后自动把画布清空成背景色，因此
+  不需要（也没有）专门"清屏"的函数。
+- 每帧把要画的内容画完整即可；没画到的部分就是背景色。
+- 默认背景色是黑色；通常在进入主循环之前设置一次。
 
 ## 6. 基本绘图
 
@@ -507,8 +512,7 @@ unsigned bgt_rgba(int r, int g, int b, int a);
 void bgt_set_color(unsigned color);
 unsigned bgt_get_color();
 
-void bgt_clear_screen();
-void bgt_clear_screen(unsigned color);
+void bgt_set_background(unsigned color);
 
 void bgt_draw_point(int x, int y);
 void bgt_draw_line(int x1, int y1, int x2, int y2);

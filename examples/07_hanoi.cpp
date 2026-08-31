@@ -314,7 +314,7 @@ void draw_center_text(int cx, int y, const char text[], int size)
 
 void draw_frame()
 {
-    bgt_clear_screen(bgt_rgb(248, 246, 240));
+    bgt_set_background(bgt_rgb(248, 246, 240));
 
     // 底座与柱子
     bgt_set_color(bgt_rgb(150, 118, 78));

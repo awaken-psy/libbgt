@@ -47,9 +47,9 @@ libbgt 的用法，并在练习中逐步建立"程序 = 循环中持续更新的
 int main()
 {
     bgt_open_window(800, 600, "汉诺塔");
+    bgt_set_background(BGT_WHITE);
 
     while (bgt_window_is_open()) {
-        bgt_clear_screen(BGT_WHITE);
         // TODO: 画三根柱子
         // TODO: 在左柱上叠 3 个圆盘（宽度递减）
         // TODO: 画标题

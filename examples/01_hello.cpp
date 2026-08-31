@@ -18,10 +18,9 @@ int main()
     }
 
     bgt_set_fps_limit(kTargetFps);
+    bgt_set_background(BGT_WHITE);
 
     while (bgt_window_is_open()) {
-        bgt_clear_screen(BGT_WHITE);
-
         bgt_set_color(BGT_BLUE);
         bgt_fill_circle(kCircleX, kCircleY, kCircleRadius);
 

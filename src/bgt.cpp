@@ -46,6 +46,7 @@ struct State {
     int width = 0;
     int height = 0;
     unsigned color = BGT_WHITE;
+    unsigned background = BGT_BLACK;
     int line_width = 1;
     int font_size = kDefaultFontSize;
     int fps_limit = 0;
@@ -737,6 +738,7 @@ bool open_window_impl(int width, int height, const char title[],
     s.width = width;
     s.height = height;
     s.color = BGT_WHITE;
+    s.background = BGT_BLACK;
     s.line_width = 1;
     s.font_size = kDefaultFontSize;
     s.fps_limit = 0;
@@ -751,7 +753,7 @@ bool open_window_impl(int width, int height, const char title[],
     s.previous_keys.fill(false);
     s.mouse_buttons.fill(false);
     s.previous_mouse_buttons.fill(false);
-    apply_render_color(s, BGT_BLACK);
+    apply_render_color(s, s.background);
     SDL_RenderClear(s.renderer);
     SDL_RenderPresent(s.renderer);
     apply_render_color(s, s.color);
@@ -804,6 +806,13 @@ void bgt_update_window()
     update_time(s);
 
     SDL_RenderPresent(s.renderer);
+
+    // 本帧已经显示：立刻把后备缓冲清成背景色，下一帧的绘制从空白画布开始。
+    // 因此用户不需要（也没有）手动"清屏"：没画到的区域永远是背景色。
+    apply_render_color(s, s.background);
+    SDL_RenderClear(s.renderer);
+    apply_render_color(s, s.color);
+
     update_fps(s);
     apply_fps_limit(s, frame_start);
 }
@@ -858,20 +867,11 @@ unsigned bgt_get_color()
     return state().color;
 }
 
-void bgt_clear_screen()
+void bgt_set_background(unsigned color)
 {
-    bgt_clear_screen(BGT_BLACK);
-}
-
-void bgt_clear_screen(unsigned color)
-{
-    State &s = state();
-    if (!ensure_open(s)) {
-        return;
-    }
-    apply_render_color(s, color);
-    SDL_RenderClear(s.renderer);
-    apply_render_color(s, s.color);
+    // 只记录状态：真正的清空发生在 bgt_update_window() 结束时，
+    // 下一帧起生效，中途调用不会擦掉本帧已经画好的内容。
+    state().background = color;
 }
 
 void bgt_draw_point(int x, int y)

@@ -14,10 +14,9 @@ int main()
     }
 
     bgt_set_fps_limit(kTargetFps);
+    bgt_set_background(bgt_rgb(248, 249, 252));
 
     while (bgt_window_is_open()) {
-        bgt_clear_screen(bgt_rgb(248, 249, 252));
-
         bgt_set_color(BGT_BLACK);
         bgt_draw_text(40, 30, "基本图形：点、线、矩形、圆、椭圆、三角形", 28);
 
