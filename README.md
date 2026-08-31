@@ -125,6 +125,7 @@ package/
 
 - [设计文档](docs/design.md)
 - [首版 API 文档](docs/api-v0.md)
+- [作业设计（汉诺塔主题）](docs/exercises.md)
 
 ## 首版范围
 
