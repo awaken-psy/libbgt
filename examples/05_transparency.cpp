@@ -2,7 +2,9 @@
 
 // NOLINTBEGIN(readability-magic-numbers)
 
-static void draw_checkerboard(int cell_size)
+namespace {
+
+void draw_checkerboard(int cell_size)
 {
     for (int cell_y = 0; cell_y < bgt_window_height(); cell_y += cell_size) {
         for (int cell_x = 0; cell_x < bgt_window_width(); cell_x += cell_size) {
@@ -14,6 +16,8 @@ static void draw_checkerboard(int cell_size)
         }
     }
 }
+
+} // namespace
 
 int main()
 {

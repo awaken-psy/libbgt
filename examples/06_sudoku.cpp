@@ -69,21 +69,21 @@ constexpr int kCellDigitYOffset = 2;
 constexpr int kNoteInset = 10;
 constexpr int kNoteSlotSize = (kCellSize - (kNoteInset * 2)) / kBoxSize;
 
-constexpr int kColorBackground = static_cast<int>(0xFFF6F0E8U);
-constexpr int kColorBoard = static_cast<int>(0xFFFFFCF5U);
-constexpr int kColorPanel = static_cast<int>(0xFFFFF8ECU);
-constexpr int kColorGrid = static_cast<int>(0xFF6D5D4DU);
-constexpr int kColorThickGrid = static_cast<int>(0xFF342820U);
-constexpr int kColorSelected = static_cast<int>(0xFFF1B85FU);
-constexpr int kColorRelated = static_cast<int>(0xFFFFE7B8U);
-constexpr int kColorSameNumber = static_cast<int>(0xFFFFCE86U);
-constexpr int kColorPresetText = static_cast<int>(0xFF1C1815U);
-constexpr int kColorUserText = static_cast<int>(0xFF2266AAU);
-constexpr int kColorNoteText = static_cast<int>(0xFF777777U);
-constexpr int kColorButton = static_cast<int>(0xFFFFFFFFU);
-constexpr int kColorButtonActive = static_cast<int>(0xFFFFD994U);
-constexpr int kColorButtonBorder = static_cast<int>(0xFF8A765FU);
-constexpr int kColorDisabled = static_cast<int>(0xFFB7ADA2U);
+constexpr unsigned kColorBackground = 0xFFF6F0E8U;
+constexpr unsigned kColorBoard = 0xFFFFFCF5U;
+constexpr unsigned kColorPanel = 0xFFFFF8ECU;
+constexpr unsigned kColorGrid = 0xFF6D5D4DU;
+constexpr unsigned kColorThickGrid = 0xFF342820U;
+constexpr unsigned kColorSelected = 0xFFF1B85FU;
+constexpr unsigned kColorRelated = 0xFFFFE7B8U;
+constexpr unsigned kColorSameNumber = 0xFFFFCE86U;
+constexpr unsigned kColorPresetText = 0xFF1C1815U;
+constexpr unsigned kColorUserText = 0xFF2266AAU;
+constexpr unsigned kColorNoteText = 0xFF777777U;
+constexpr unsigned kColorButton = 0xFFFFFFFFU;
+constexpr unsigned kColorButtonActive = 0xFFFFD994U;
+constexpr unsigned kColorButtonBorder = 0xFF8A765FU;
+constexpr unsigned kColorDisabled = 0xFFB7ADA2U;
 
 struct SudokuState {
     std::array<int, kCellCount> given{};
@@ -298,7 +298,7 @@ void draw_cell_backgrounds(const SudokuState &s)
     const int chosen_value = selected_value(s);
     for (int row = 0; row < kGridSize; ++row) {
         for (int col = 0; col < kGridSize; ++col) {
-            int color = kColorBoard;
+            unsigned color = kColorBoard;
             const bool selected =
                 row == s.selected_row && col == s.selected_col;
             const bool related =

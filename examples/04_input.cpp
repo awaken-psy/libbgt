@@ -21,7 +21,7 @@ int main()
     double x = 450.0;
     double y = 300.0;
     int radius = 40;
-    int color = BGT_BLUE;
+    unsigned color = BGT_BLUE;
 
     while (bgt_window_is_open()) {
         const double dt = bgt_delta_time();
