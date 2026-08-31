@@ -28,7 +28,7 @@
 文本：
 
 - 字符串按 UTF-8 处理。
-- 随库内置中文字体。
+- 默认使用系统中文字体，也可用 `bgt_set_font()` 指定字体文件。
 - 示例源码应保存为 UTF-8。
 - Windows MSVC 构建应启用 `/utf-8`。
 
@@ -316,7 +316,8 @@ bool bgt_set_font(const char filename[], int size);
 
 说明：
 
-- 如果不调用该函数，库使用内置中文字体。
+- 如果不调用该函数，库使用系统自带的中文字体（Windows 下通常是微软雅黑）。
+- 系统找不到可用字体时，文本绘制会失败并记录错误，此时应调用该函数指定可用字体。
 - 字体文件路径按 UTF-8 处理。
 - 加载失败返回 `false`。
 
@@ -340,11 +341,18 @@ BGT_KEY_ENTER
 BGT_KEY_ESCAPE
 BGT_KEY_TAB
 BGT_KEY_BACKSPACE
+BGT_KEY_SHIFT
+BGT_KEY_CTRL
+BGT_KEY_ALT
 
 BGT_KEY_A ... BGT_KEY_Z
 BGT_KEY_0 ... BGT_KEY_9
 BGT_KEY_F1 ... BGT_KEY_F12
 ```
+
+左右 Shift、Ctrl、Alt 会分别合并为 `BGT_KEY_SHIFT`、`BGT_KEY_CTRL`、
+`BGT_KEY_ALT`。小键盘在 Num Lock 开启时映射为数字键；关闭时 2/4/6/8
+映射为方向键。
 
 ### 8.2 函数语义
 
@@ -548,6 +556,10 @@ void bgt_clear_error();
 ## 13. 首版常量清单
 
 ```cpp
+BGT_VERSION_MAJOR
+BGT_VERSION_MINOR
+BGT_VERSION_PATCH
+
 BGT_BLACK
 BGT_WHITE
 BGT_RED
@@ -574,6 +586,9 @@ BGT_KEY_ENTER
 BGT_KEY_ESCAPE
 BGT_KEY_TAB
 BGT_KEY_BACKSPACE
+BGT_KEY_SHIFT
+BGT_KEY_CTRL
+BGT_KEY_ALT
 BGT_KEY_A ... BGT_KEY_Z
 BGT_KEY_0 ... BGT_KEY_9
 BGT_KEY_F1 ... BGT_KEY_F12
@@ -592,6 +607,9 @@ BGT_ERROR_NOT_OPEN
 ```
 
 错误码可通过 `bgt_error_code()` 读取。面向学生的示例通常只需要使用 `bgt_print_error()`。
+
+版本号宏 `BGT_VERSION_MAJOR`、`BGT_VERSION_MINOR`、`BGT_VERSION_PATCH`
+表示库的当前版本，当前为 `0.1.0`。
 
 ## 14. 不属于 v0.1 的能力
 

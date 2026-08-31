@@ -70,7 +70,6 @@ target_include_directories(
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-target_compile_definitions(bgt PRIVATE BGT_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
 if(BGT_BUILD_SHARED)
     target_link_libraries(bgt PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
 else()
@@ -143,8 +142,6 @@ else()
 endif()
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/bgt.h"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/"
-    DESTINATION "${CMAKE_INSTALL_BINDIR}/assets")
 
 set(CPACK_GENERATOR ZIP)
 set(CPACK_PACKAGE_FILE_NAME

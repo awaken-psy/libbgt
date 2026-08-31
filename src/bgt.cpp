@@ -12,10 +12,6 @@
 #include <string>
 #include <vector>
 
-#ifndef BGT_ASSET_DIR
-#define BGT_ASSET_DIR "assets"
-#endif
-
 // The implementation mirrors the beginner-facing API, where short coordinate
 // names, integer colors, and C-style string parameters are deliberate.
 // NOLINTBEGIN(readability-magic-numbers, modernize-avoid-c-arrays,
@@ -234,17 +230,6 @@ void add_candidate(std::vector<std::string> &candidates,
 std::vector<std::string> default_font_candidates()
 {
     std::vector<std::string> candidates;
-    add_candidate(candidates,
-                  join_path(BGT_ASSET_DIR, "fonts/NotoSansSC-Regular.otf"));
-    add_candidate(candidates, "assets/fonts/NotoSansSC-Regular.otf");
-
-    const char *base_path = SDL_GetBasePath();
-    if (base_path != nullptr) {
-        add_candidate(
-            candidates,
-            join_path(base_path, "assets/fonts/NotoSansSC-Regular.otf"));
-    }
-
 #ifdef _WIN32
     const char *win_dir = SDL_getenv("WINDIR");
     const std::string font_dir =
@@ -272,7 +257,7 @@ std::string resolve_default_font()
             return candidate;
         }
     }
-    return join_path(BGT_ASSET_DIR, "fonts/NotoSansSC-Regular.otf");
+    return "";
 }
 
 TTF_Font *get_font(State &s, int size)
@@ -286,6 +271,12 @@ TTF_Font *get_font(State &s, int size)
 
     if (s.font_path.empty()) {
         s.font_path = resolve_default_font();
+        if (s.font_path.empty()) {
+            s.set_error(BGT_ERROR_FONT,
+                        "no usable system font found; install a CJK font or "
+                        "use bgt_set_font()");
+            return nullptr;
+        }
     }
 
     for (FontEntry &entry : s.fonts) {

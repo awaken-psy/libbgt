@@ -10,7 +10,7 @@
 - 基础接口统一使用 `bgt_` 前缀。
 - 基础接口不要求使用类、对象、结构体或指针。
 - 默认只管理一个窗口和一张隐式画布。
-- 中文显示开箱可用，随库内置中文字体。
+- 中文显示开箱可用，默认使用系统中文字体。
 - 项目使用 CMake 构建。
 - SDL3 与 SDL3_ttf 通过 Git Submodule 管理。
 - SDL3、SDL3_ttf 及其字体依赖默认静态链接，生成的示例程序无需附带 SDL DLL。
@@ -42,7 +42,7 @@ int main()
 }
 ```
 
-## 计划中的项目结构
+## 项目结构
 
 ```text
 libbgt/
@@ -55,15 +55,14 @@ libbgt/
     bgt.h
   src/
     bgt.cpp
-  assets/
-    fonts/
-      NotoSansSC-Regular.otf
   examples/
     01_hello.cpp
     02_shapes.cpp
-    03_keyboard.cpp
-    04_mouse.cpp
-    05_chinese_text.cpp
+    03_text.cpp
+    04_input.cpp
+    05_transparency.cpp
+    06_sudoku.cpp
+    06_sudoku_puzzle.txt
   third_party/
     SDL/
     SDL_ttf/
@@ -91,7 +90,9 @@ cmake --build build
 如改用系统安装的依赖，请确保其同时提供静态 CMake 目标，然后配置
 `-DBGT_USE_SYSTEM_SDL=ON`。
 
-当前仓库包含首版基础 API 实现、CMake 构建脚本和一个最小示例。中文字体文件由 `assets/fonts/NotoSansSC-Regular.otf` 提供，仓库使用者需要确保该文件存在。
+当前仓库包含首版基础 API 实现、CMake 构建脚本和 6 个示例程序。文本绘制默认
+使用系统自带的中文字体（Windows 下通常是微软雅黑），不依赖仓库内的字体文件；
+系统缺少中文字体时，可以用 `bgt_set_font()` 指定可用字体。
 
 ## MSVC 二进制分发
 
@@ -109,15 +110,14 @@ cmake --install build-dist --config Release --prefix package
 
 ```text
 package/
-  bin/assets/fonts/NotoSansSC-Regular.otf
   include/bgt.h
   lib/bgt_vendored.lib
 ```
 
 使用者在 Visual Studio 中添加 `include` 目录、`lib` 目录和
 `bgt_vendored.lib` 即可。头文件会为 MSVC 自动声明 SDL 所需的 Windows 系统
-库，因此无需逐项配置 SDL 的传递依赖。字体仍需放在程序 exe 旁边的
-`assets/fonts` 目录中。
+库，因此无需逐项配置 SDL 的传递依赖。文本绘制默认使用系统自带的中文字体，
+无需附带字体文件。
 
 也可以在构建目录运行 `cpack -C Release`，直接生成同样内容的 ZIP 包。
 
@@ -142,7 +142,7 @@ package/
 
 - `include/bgt.h`
 - `src/bgt.cpp`
-- `examples/01_hello.cpp`
+- `examples/` 下的 6 个示例（`01_hello.cpp` 到 `06_sudoku.cpp`）
 
 首版暂不提供：
 

@@ -226,8 +226,9 @@ void bgt_set_line_width(int width);
 int bgt_get_line_width();
 
 // 设置后续文本绘制使用的字体文件和默认字号。filename 是字体文件路径，size 是
-// 默认字号。成功返回 true；失败返回 false。若不调用该函数，库会尝试使用随库
-// 提供的中文字体 assets/fonts/NotoSansSC-Regular.otf。
+// 默认字号。成功返回 true；失败返回 false。若不调用该函数，库会尝试使用系统
+// 自带的中文字体（Windows 下通常是微软雅黑）；找不到可用字体时文本绘制会失败
+// 并记录错误，此时应调用该函数指定可用字体。
 bool bgt_set_font(const char filename[], int size);
 
 // 设置默认字号。后续不带 size 参数的 bgt_draw_text()、bgt_text_width()、

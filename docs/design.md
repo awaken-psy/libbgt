@@ -10,7 +10,7 @@
 
 - 使用简单：基础接口只使用普通函数。
 - 概念简单：默认只有一个窗口、一张隐式画布、一个主循环。
-- 中文友好：随库内置中文字体，默认支持 UTF-8 中文显示。
+- 中文友好：默认使用系统中文字体，支持 UTF-8 中文显示。
 - 工程可控：项目使用 CMake 构建，SDL3 与 SDL3_ttf 通过 Git Submodule 管理。
 - 适合教学：不把高阶封装提前提供给学生，把抽象、封装和设计练习留给课程后半段。
 - 可渐进扩展：基础函数式接口稳定后，可以在其上构建现代 C++ 封装层。
@@ -251,27 +251,14 @@ int bgt_rgba(int r, int g, int b, int a);
 
 - 源码字符串按 UTF-8 解释。
 - `bgt_draw_text(x, y, "你好", size)` 默认可用。
-- 随库内置中文字体。
+- 默认使用系统自带的中文字体。
 - 默认字体覆盖常用中文字符。
 - 字体加载失败时不崩溃，并提供错误信息。
 - 文本渲染基于 SDL3_ttf。
 
-推荐内置字体：
-
-```text
-assets/fonts/NotoSansSC-Regular.otf
-```
-
-可替代字体：
-
-```text
-assets/fonts/SourceHanSansSC-Regular.otf
-```
-
 字体查找顺序：
 
 - 用户通过 `bgt_set_font` 指定的字体。
-- 随库内置字体。
 - 系统中文字体。
 - 系统默认 Sans 字体。
 
@@ -280,6 +267,12 @@ assets/fonts/SourceHanSansSC-Regular.otf
 - Windows：Microsoft YaHei、SimHei。
 - macOS：PingFang SC。
 - Linux：Noto Sans CJK、WenQuanYi。
+
+说明：
+
+- 首版不随库捆绑字体文件，避免仓库体积和字体授权问题。系统缺少中文字体时，
+  `bgt_draw_text` 会失败并记录错误，提示用户改用 `bgt_set_font` 指定字体。
+- 后续如有需要，可以重新引入随库字体作为可选资源。
 
 编码约定：
 
@@ -354,7 +347,7 @@ CMake 设计要求：
 - 构建静态库或共享库由 CMake 选项控制。
 - 示例程序通过 CMake 统一构建。
 - MSVC 构建时自动启用 `/utf-8`。
-- 构建后复制运行所需 DLL 和字体资源到示例输出目录。
+- 构建后把示例运行所需的附加文件复制到示例输出目录。
 
 建议 CMake 选项：
 
@@ -405,15 +398,13 @@ libbgt/
     bgt.h
   src/
     bgt.cpp
-  assets/
-    fonts/
-      NotoSansSC-Regular.otf
   examples/
     01_hello.cpp
     02_shapes.cpp
-    03_keyboard.cpp
-    04_mouse.cpp
-    05_chinese_text.cpp
+    03_text.cpp
+    04_input.cpp
+    05_transparency.cpp
+    06_sudoku.cpp
   third_party/
     SDL/
     SDL_ttf/
@@ -424,11 +415,12 @@ libbgt/
 首批示例应当从低到高排列：
 
 ```text
-01_hello.cpp
-02_shapes.cpp
-03_keyboard.cpp
-04_mouse.cpp
-05_chinese_text.cpp
+01_hello.cpp           窗口与第一个图形
+02_shapes.cpp          基本图形绘制
+03_text.cpp            文本与中文显示
+04_input.cpp           键盘与鼠标输入
+05_transparency.cpp    透明与颜色混合
+06_sudoku.cpp          综合小游戏（数独）
 ```
 
 示例原则：
@@ -498,9 +490,11 @@ libbgt/
 
 网格绘制、单元格填充、按钮、场景切换等内容有明确教学价值，应当作为学生作业或课堂练习，而不是由库直接提供。
 
-### 17.5 内置中文字体
+### 17.5 系统字体优先
 
-中文显示不能依赖教学机房环境是否安装字体。随库内置字体会增加体积，但能显著减少配置问题。
+首版不随库捆绑字体文件：Windows 的微软雅黑、macOS 的苹方等系统字体已覆盖
+教学常用中文字符，可以避免仓库体积和字体授权问题。若目标机器缺少中文字体，
+`bgt_draw_text` 会失败并记录错误，学生可改用 `bgt_set_font` 指定字体文件。
 
 ## 18. 首版验收标准
 
@@ -522,6 +516,7 @@ libbgt/
 - `include/bgt.h`
 - `src/bgt.cpp`
 - `CMakeLists.txt`
-- `examples/01_hello.cpp`
+- `examples/` 下的 6 个示例（`01_hello.cpp` 到 `06_sudoku.cpp`）
 
-实现范围与 `docs/api-v0.md` 保持一致。内置中文字体路径默认为 `assets/fonts/NotoSansSC-Regular.otf`，字体文件由项目维护者放入对应目录。
+实现范围与 `docs/api-v0.md` 保持一致。文本绘制默认使用系统自带中文字体，
+不依赖仓库内的字体文件。
