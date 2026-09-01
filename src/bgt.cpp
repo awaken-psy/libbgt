@@ -22,6 +22,7 @@ namespace {
 constexpr int kMaxPublicKey = 512;
 constexpr int kMouseButtonCount = 4;
 constexpr int kDefaultFontSize = 24;
+constexpr int kSuperSample = 2;           // SSAA 倍率
 constexpr double kFpsWindowSeconds = 1.0;
 constexpr double kTwoPi = 6.28318530717958647692;
 
@@ -59,10 +60,12 @@ struct State {
     int mouse_x = 0;
     int mouse_y = 0;
     int mouse_wheel = 0;
+    SDL_Texture *canvas = nullptr;       // SSAA 离屏纹理
     std::uint64_t start_ticks = 0;
     std::uint64_t previous_ticks = 0;
     std::uint64_t fps_ticks = 0;
     int fps_frames = 0;
+    std::uint64_t next_frame_ns = 0;
     double delta_time = 0.0;
     double total_time = 0.0;
     double fps = 0.0;
@@ -105,6 +108,10 @@ struct State {
 
     void close()
     {
+        if (canvas != nullptr) {
+            SDL_DestroyTexture(canvas);
+            canvas = nullptr;
+        }
         close_fonts();
         if (renderer != nullptr) {
             SDL_DestroyRenderer(renderer);
@@ -504,17 +511,30 @@ void update_fps(State &s)
     }
 }
 
-void apply_fps_limit(State &s, std::uint64_t frame_start)
+void apply_fps_limit(State &s)
 {
     if (s.fps_limit <= 0) {
+        s.next_frame_ns = 0;
         return;
     }
-    const std::uint64_t frame_ms =
-        1000U / static_cast<std::uint64_t>(s.fps_limit);
-    const std::uint64_t elapsed = SDL_GetTicks() - frame_start;
-    if (elapsed < frame_ms) {
-        SDL_Delay(static_cast<Uint32>(frame_ms - elapsed));
+    const std::uint64_t period_ns = static_cast<std::uint64_t>(SDL_NS_PER_SECOND)
+        / static_cast<std::uint64_t>(s.fps_limit);
+    const std::uint64_t now = SDL_GetTicksNS();
+
+    if (s.next_frame_ns == 0) {
+        s.next_frame_ns = now + period_ns;
+        return;
     }
+    if (now < s.next_frame_ns) {
+        SDL_DelayPrecise(s.next_frame_ns - now);
+    }
+    else if (now - s.next_frame_ns >= period_ns) {
+        // 落后超过一整个帧周期（如卡顿、拖动窗口）时放弃补帧，
+        // 从当前时刻重新对齐节拍，避免连续高速追赶。
+        s.next_frame_ns = now + period_ns;
+        return;
+    }
+    s.next_frame_ns += period_ns;
 }
 
 void draw_hline(State &s, int x1, int x2, int y)
@@ -524,103 +544,6 @@ void draw_hline(State &s, int x1, int x2, int y)
     }
     SDL_RenderLine(s.renderer, static_cast<float>(x1), static_cast<float>(y),
                    static_cast<float>(x2), static_cast<float>(y));
-}
-
-double fractional_part(double value)
-{
-    return value - std::floor(value);
-}
-
-double reverse_fractional_part(double value)
-{
-    return 1.0 - fractional_part(value);
-}
-
-void draw_coverage_point(State &s, int x, int y, double coverage)
-{
-    coverage = std::clamp(coverage, 0.0, 1.0);
-    const int alpha =
-        static_cast<int>(std::lround(color_a(s.color) * coverage));
-    if (alpha <= 0) {
-        return;
-    }
-
-    SDL_SetRenderDrawColor(s.renderer, color_r(s.color), color_g(s.color),
-                           color_b(s.color), static_cast<std::uint8_t>(alpha));
-    SDL_RenderPoint(s.renderer, static_cast<float>(x), static_cast<float>(y));
-}
-
-void draw_aa_line(State &s, int x1, int y1, int x2, int y2)
-{
-    if (x1 == x2 && y1 == y2) {
-        draw_coverage_point(s, x1, y1, 1.0);
-        return;
-    }
-
-    const bool steep = std::abs(y2 - y1) > std::abs(x2 - x1);
-    if (steep) {
-        std::swap(x1, y1);
-        std::swap(x2, y2);
-    }
-    if (x1 > x2) {
-        std::swap(x1, x2);
-        std::swap(y1, y2);
-    }
-
-    const double dx = static_cast<double>(x2 - x1);
-    const double dy = static_cast<double>(y2 - y1);
-    const double gradient = dx == 0.0 ? 1.0 : dy / dx;
-
-    const int first_x = static_cast<int>(std::lround(x1));
-    const double first_y = y1 + (gradient * (first_x - x1));
-    const double first_gap = reverse_fractional_part(x1 + 0.5);
-    const int first_pixel_y = static_cast<int>(std::floor(first_y));
-
-    if (steep) {
-        draw_coverage_point(s, first_pixel_y, first_x,
-                            reverse_fractional_part(first_y) * first_gap);
-        draw_coverage_point(s, first_pixel_y + 1, first_x,
-                            fractional_part(first_y) * first_gap);
-    }
-    else {
-        draw_coverage_point(s, first_x, first_pixel_y,
-                            reverse_fractional_part(first_y) * first_gap);
-        draw_coverage_point(s, first_x, first_pixel_y + 1,
-                            fractional_part(first_y) * first_gap);
-    }
-
-    double inter_y = first_y + gradient;
-
-    const int last_x = static_cast<int>(std::lround(x2));
-    const double last_y = y2 + (gradient * (last_x - x2));
-    const double last_gap = fractional_part(x2 + 0.5);
-    const int last_pixel_y = static_cast<int>(std::floor(last_y));
-
-    for (int x = first_x + 1; x < last_x; ++x) {
-        const int y = static_cast<int>(std::floor(inter_y));
-        if (steep) {
-            draw_coverage_point(s, y, x, reverse_fractional_part(inter_y));
-            draw_coverage_point(s, y + 1, x, fractional_part(inter_y));
-        }
-        else {
-            draw_coverage_point(s, x, y, reverse_fractional_part(inter_y));
-            draw_coverage_point(s, x, y + 1, fractional_part(inter_y));
-        }
-        inter_y += gradient;
-    }
-
-    if (steep) {
-        draw_coverage_point(s, last_pixel_y, last_x,
-                            reverse_fractional_part(last_y) * last_gap);
-        draw_coverage_point(s, last_pixel_y + 1, last_x,
-                            fractional_part(last_y) * last_gap);
-    }
-    else {
-        draw_coverage_point(s, last_x, last_pixel_y,
-                            reverse_fractional_part(last_y) * last_gap);
-        draw_coverage_point(s, last_x, last_pixel_y + 1,
-                            fractional_part(last_y) * last_gap);
-    }
 }
 
 void draw_text_impl(State &s, int x, int y, const char text[], int size)
@@ -730,6 +653,22 @@ bool open_window_impl(int width, int height, const char title[],
     }
 
     SDL_SetRenderDrawBlendMode(s.renderer, SDL_BLENDMODE_BLEND);
+
+    // SSAA: 创建 2x 分辨率的离屏纹理作为画布，所有绘制画到它上面，
+    // bgt_update_window 时线性缩放到窗口，实现全场景抗锯齿。
+    s.canvas = SDL_CreateTexture(
+        s.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
+        width * kSuperSample, height * kSuperSample);
+    if (s.canvas == nullptr) {
+        s.set_error(BGT_ERROR_RENDERER, "failed to create SSAA canvas");
+        s.close();
+        return false;
+    }
+    SDL_SetTextureScaleMode(s.canvas, SDL_SCALEMODE_LINEAR);
+
+    // 先切到画布，再设逻辑坐标：logical presentation 绑定在当前 render target 上，
+    // 这样 800×600 的逻辑坐标会映射到画布的 1600×1200 像素
+    SDL_SetRenderTarget(s.renderer, s.canvas);
     SDL_SetRenderLogicalPresentation(s.renderer, width, height,
                                      SDL_LOGICAL_PRESENTATION_STRETCH);
 
@@ -746,6 +685,7 @@ bool open_window_impl(int width, int height, const char title[],
     s.previous_ticks = s.start_ticks;
     s.fps_ticks = s.start_ticks;
     s.fps_frames = 0;
+    s.next_frame_ns = 0;
     s.delta_time = 0.0;
     s.total_time = 0.0;
     s.fps = 0.0;
@@ -755,7 +695,6 @@ bool open_window_impl(int width, int height, const char title[],
     s.previous_mouse_buttons.fill(false);
     apply_render_color(s, s.background);
     SDL_RenderClear(s.renderer);
-    SDL_RenderPresent(s.renderer);
     apply_render_color(s, s.color);
     return true;
 }
@@ -785,7 +724,6 @@ void bgt_update_window()
         return;
     }
 
-    const std::uint64_t frame_start = SDL_GetTicks();
     s.previous_keys = s.keys;
     s.previous_mouse_buttons = s.mouse_buttons;
     s.mouse_wheel = 0;
@@ -805,16 +743,21 @@ void bgt_update_window()
     sync_mouse(s);
     update_time(s);
 
+    // SSAA: 把 2x 离屏纹理线性缩放到窗口显示
+    SDL_SetRenderTarget(s.renderer, nullptr);
+    apply_render_color(s, s.background);
+    SDL_RenderClear(s.renderer);
+    SDL_RenderTexture(s.renderer, s.canvas, nullptr, nullptr);
     SDL_RenderPresent(s.renderer);
 
-    // 本帧已经显示：立刻把后备缓冲清成背景色，下一帧的绘制从空白画布开始。
-    // 因此用户不需要（也没有）手动"清屏"：没画到的区域永远是背景色。
+    // 切回离屏纹理，清成背景色，下一帧从空白画布开始
+    SDL_SetRenderTarget(s.renderer, s.canvas);
     apply_render_color(s, s.background);
     SDL_RenderClear(s.renderer);
     apply_render_color(s, s.color);
 
     update_fps(s);
-    apply_fps_limit(s, frame_start);
+    apply_fps_limit(s);
 }
 
 void bgt_close_window()
@@ -891,13 +834,35 @@ void bgt_draw_line(int x1, int y1, int x2, int y2)
         return;
     }
     apply_render_color(s, s.color);
-    const int half = std::max(0, s.line_width / 2);
-    for (int offset = -half; offset <= half; ++offset) {
-        draw_aa_line(s, x1 + offset, y1, x2 + offset, y2);
-        if (offset != 0) {
-            draw_aa_line(s, x1, y1 + offset, x2, y2 + offset);
+
+    if (s.line_width <= 1) {
+        // 1px 线：SSAA 已提供全场景抗锯齿，直接用 SDL_RenderLine
+        SDL_RenderLine(s.renderer, static_cast<float>(x1), static_cast<float>(y1),
+                       static_cast<float>(x2), static_cast<float>(y2));
+    } else {
+        // 粗线：沿垂直方向偏移 SDL_RenderLine，避免多条 AA 线叠加导致的颜色不均和端点突出
+        const double dx = static_cast<double>(x2 - x1);
+        const double dy = static_cast<double>(y2 - y1);
+        const double length = std::sqrt(dx * dx + dy * dy);
+        if (length < 0.5) {
+            const int half = s.line_width / 2;
+            bgt_fill_rect(x1 - half, y1 - half, s.line_width, s.line_width);
+        } else {
+            const double px = -dy / length;
+            const double py = dx / length;
+            const int half = s.line_width / 2;
+            for (int i = -half; i <= half; ++i) {
+                const float off = static_cast<float>(i);
+                SDL_RenderLine(
+                    s.renderer,
+                    static_cast<float>(x1) + static_cast<float>(px) * off,
+                    static_cast<float>(y1) + static_cast<float>(py) * off,
+                    static_cast<float>(x2) + static_cast<float>(px) * off,
+                    static_cast<float>(y2) + static_cast<float>(py) * off);
+            }
         }
     }
+
     apply_render_color(s, s.color);
 }
 
@@ -997,7 +962,9 @@ void bgt_draw_ellipse(int x, int y, int radius_x, int radius_y)
             x + static_cast<int>(std::lround(std::cos(angle) * radius_x));
         const int next_y =
             y + static_cast<int>(std::lround(std::sin(angle) * radius_y));
-        draw_aa_line(s, previous_x, previous_y, next_x, next_y);
+        SDL_RenderLine(s.renderer, static_cast<float>(previous_x),
+                       static_cast<float>(previous_y),
+                       static_cast<float>(next_x), static_cast<float>(next_y));
         previous_x = next_x;
         previous_y = next_y;
     }
