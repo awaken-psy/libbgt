@@ -63,6 +63,7 @@ struct State {
     std::uint64_t previous_ticks = 0;
     std::uint64_t fps_ticks = 0;
     int fps_frames = 0;
+    std::uint64_t next_frame_ns = 0;
     double delta_time = 0.0;
     double total_time = 0.0;
     double fps = 0.0;
@@ -504,17 +505,30 @@ void update_fps(State &s)
     }
 }
 
-void apply_fps_limit(State &s, std::uint64_t frame_start)
+void apply_fps_limit(State &s)
 {
     if (s.fps_limit <= 0) {
+        s.next_frame_ns = 0;
         return;
     }
-    const std::uint64_t frame_ms =
-        1000U / static_cast<std::uint64_t>(s.fps_limit);
-    const std::uint64_t elapsed = SDL_GetTicks() - frame_start;
-    if (elapsed < frame_ms) {
-        SDL_Delay(static_cast<Uint32>(frame_ms - elapsed));
+    const std::uint64_t period_ns = static_cast<std::uint64_t>(SDL_NS_PER_SECOND)
+        / static_cast<std::uint64_t>(s.fps_limit);
+    const std::uint64_t now = SDL_GetTicksNS();
+
+    if (s.next_frame_ns == 0) {
+        s.next_frame_ns = now + period_ns;
+        return;
     }
+    if (now < s.next_frame_ns) {
+        SDL_DelayPrecise(s.next_frame_ns - now);
+    }
+    else if (now - s.next_frame_ns >= period_ns) {
+        // 落后超过一整个帧周期（如卡顿、拖动窗口）时放弃补帧，
+        // 从当前时刻重新对齐节拍，避免连续高速追赶。
+        s.next_frame_ns = now + period_ns;
+        return;
+    }
+    s.next_frame_ns += period_ns;
 }
 
 void draw_hline(State &s, int x1, int x2, int y)
@@ -746,6 +760,7 @@ bool open_window_impl(int width, int height, const char title[],
     s.previous_ticks = s.start_ticks;
     s.fps_ticks = s.start_ticks;
     s.fps_frames = 0;
+    s.next_frame_ns = 0;
     s.delta_time = 0.0;
     s.total_time = 0.0;
     s.fps = 0.0;
@@ -785,7 +800,6 @@ void bgt_update_window()
         return;
     }
 
-    const std::uint64_t frame_start = SDL_GetTicks();
     s.previous_keys = s.keys;
     s.previous_mouse_buttons = s.mouse_buttons;
     s.mouse_wheel = 0;
@@ -814,7 +828,7 @@ void bgt_update_window()
     apply_render_color(s, s.color);
 
     update_fps(s);
-    apply_fps_limit(s, frame_start);
+    apply_fps_limit(s);
 }
 
 void bgt_close_window()
