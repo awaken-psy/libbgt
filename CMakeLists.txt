@@ -136,6 +136,15 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_sudoku examples/06_sudoku.cpp)
     bgt_add_example(bgt_hanoi examples/07_hanoi.cpp)
     bgt_add_example(bgt_api_tour examples/08_api_tour.cpp)
+    bgt_add_example(bgt_images examples/09_images.cpp)
+
+    add_custom_command(
+        TARGET bgt_images
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/examples/09_image.png"
+                "$<TARGET_FILE_DIR:bgt_images>/09_image.png"
+        VERBATIM)
 
     add_custom_command(
         TARGET bgt_sudoku
