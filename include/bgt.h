@@ -112,6 +112,11 @@
 #define BGT_MOUSE_RIGHT 2
 #define BGT_MOUSE_MIDDLE 3
 
+#define BGT_IMAGE_NONE 0
+#define BGT_FLIP_NONE 0
+#define BGT_FLIP_HORIZONTAL 1
+#define BGT_FLIP_VERTICAL 2
+
 #define BGT_ERROR_NONE 0
 #define BGT_ERROR_SDL 1
 #define BGT_ERROR_TTF 2
@@ -119,6 +124,7 @@
 #define BGT_ERROR_RENDERER 4
 #define BGT_ERROR_FONT 5
 #define BGT_ERROR_NOT_OPEN 6
+#define BGT_ERROR_IMAGE 7
 
 // 创建一个固定大小的图形窗口，并初始化 libbgt 内部需要的 SDL3 与
 // SDL3_ttf 资源。width 和 height 是窗口的逻辑绘图尺寸，title 是窗口标题，
@@ -222,6 +228,20 @@ void bgt_set_line_width(int width);
 
 // 返回当前线条宽度。
 int bgt_get_line_width();
+
+// 从文件加载一张图片，支持 PNG、JPG、BMP 等常见格式。filename 是按 UTF-8
+// 解释的图片文件路径。加载成功返回一个大于 0 的图片编号（图片 ID），失败返回
+// BGT_IMAGE_NONE（也就是 0），此时可以调用 bgt_print_error() 查看原因。图片
+// 编号用于后续的绘制和尺寸查询。请在主循环外加载图片：同一文件多次加载会
+// 得到多个互相独立的编号。图片由库统一管理，程序结束时自动释放，不需要
+// （也没有）手动释放的函数；关闭窗口后所有编号失效，需要重新加载。
+int bgt_load_image(const char filename[]);
+
+// 返回图片的原始宽度，单位是像素。image_id 无效时返回 0。
+int bgt_image_width(int image_id);
+
+// 返回图片的原始高度，单位是像素。image_id 无效时返回 0。
+int bgt_image_height(int image_id);
 
 // 设置后续文本绘制使用的字体文件和默认字号。filename 是字体文件路径，size 是
 // 默认字号。成功返回 true；失败返回 false。若不调用该函数，库会尝试使用系统

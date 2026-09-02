@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <SDL3_image/SDL_image.h>
 
 #include <algorithm>
 #include <array>
@@ -53,6 +54,7 @@ struct State {
     int fps_limit = 0;
     std::string font_path;
     std::vector<FontEntry> fonts;
+    std::vector<SDL_Texture *> images;   // 图片纹理，ID = 下标 + 1
     std::array<bool, kMaxPublicKey> keys{};
     std::array<bool, kMaxPublicKey> previous_keys{};
     std::array<bool, kMouseButtonCount> mouse_buttons{};
@@ -106,12 +108,23 @@ struct State {
         fonts.clear();
     }
 
+    void close_images()
+    {
+        for (SDL_Texture *texture : images) {
+            if (texture != nullptr) {
+                SDL_DestroyTexture(texture);
+            }
+        }
+        images.clear();
+    }
+
     void close()
     {
         if (canvas != nullptr) {
             SDL_DestroyTexture(canvas);
             canvas = nullptr;
         }
+        close_images();
         close_fonts();
         if (renderer != nullptr) {
             SDL_DestroyRenderer(renderer);
@@ -199,6 +212,19 @@ bool ensure_open(State &s)
         return false;
     }
     return true;
+}
+
+// 图片编号从 1 开始；越界或窗口未开时返回 nullptr。
+SDL_Texture *get_image(State &s, int image_id)
+{
+    if (image_id <= 0) {
+        return nullptr;
+    }
+    const auto index = static_cast<std::size_t>(image_id - 1);
+    if (index >= s.images.size()) {
+        return nullptr;
+    }
+    return s.images[index];
 }
 
 std::string join_path(const std::string &left, const std::string &right)
@@ -1331,6 +1357,69 @@ void bgt_set_line_width(int width)
 int bgt_get_line_width()
 {
     return state().line_width;
+}
+
+int bgt_load_image(const char filename[])
+{
+    State &s = state();
+    if (!ensure_open(s)) {
+        return BGT_IMAGE_NONE;
+    }
+    if (filename == nullptr || filename[0] == '\0') {
+        s.set_error(BGT_ERROR_IMAGE, "image filename is empty");
+        return BGT_IMAGE_NONE;
+    }
+
+    SDL_Surface *surface = IMG_Load(filename);
+    if (surface == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE,
+                    std::string("failed to load image ") + filename);
+        return BGT_IMAGE_NONE;
+    }
+
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(s.renderer, surface);
+    SDL_DestroySurface(surface);
+    if (texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "failed to create image texture");
+        return BGT_IMAGE_NONE;
+    }
+
+    // 透明 PNG 与缩放采样质量：与 SSAA 画布的设置保持一致
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_LINEAR);
+
+    s.images.push_back(texture);
+    return static_cast<int>(s.images.size());
+}
+
+int bgt_image_width(int image_id)
+{
+    State &s = state();
+    SDL_Texture *texture = get_image(s, image_id);
+    if (texture == nullptr) {
+        return 0;
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    if (!SDL_GetTextureSize(texture, &width, &height)) {
+        return 0;
+    }
+    return static_cast<int>(std::lround(width));
+}
+
+int bgt_image_height(int image_id)
+{
+    State &s = state();
+    SDL_Texture *texture = get_image(s, image_id);
+    if (texture == nullptr) {
+        return 0;
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    if (!SDL_GetTextureSize(texture, &width, &height)) {
+        return 0;
+    }
+    return static_cast<int>(std::lround(height));
 }
 
 bool bgt_set_font(const char filename[], int size)
