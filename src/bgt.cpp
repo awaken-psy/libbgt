@@ -227,6 +227,19 @@ SDL_Texture *get_image(State &s, int image_id)
     return s.images[index];
 }
 
+// 把 BGT_FLIP_* 常量映射到 SDL 翻转模式；非法值按不翻转处理。
+SDL_FlipMode flip_mode_of(int flip)
+{
+    switch (flip) {
+        case BGT_FLIP_HORIZONTAL:
+            return SDL_FLIP_HORIZONTAL;
+        case BGT_FLIP_VERTICAL:
+            return SDL_FLIP_VERTICAL;
+        default:
+            return SDL_FLIP_NONE;
+    }
+}
+
 std::string join_path(const std::string &left, const std::string &right)
 {
     if (left.empty()) {
@@ -1420,6 +1433,132 @@ int bgt_image_height(int image_id)
         return 0;
     }
     return static_cast<int>(std::lround(height));
+}
+
+void bgt_draw_image(int image_id, int x, int y)
+{
+    State &s = state();
+    if (!ensure_open(s)) {
+        return;
+    }
+    SDL_Texture *texture = get_image(s, image_id);
+    if (texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    if (!SDL_GetTextureSize(texture, &width, &height)) {
+        s.set_error(BGT_ERROR_IMAGE, "failed to query image size");
+        return;
+    }
+    const SDL_FRect dst{static_cast<float>(x), static_cast<float>(y),
+                        width, height};
+    SDL_RenderTexture(s.renderer, texture, nullptr, &dst);
+}
+
+void bgt_draw_image(int image_id, int x, int y, int width, int height)
+{
+    State &s = state();
+    if (!ensure_open(s) || width <= 0 || height <= 0) {
+        return;
+    }
+    SDL_Texture *texture = get_image(s, image_id);
+    if (texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    const SDL_FRect dst{static_cast<float>(x), static_cast<float>(y),
+                        static_cast<float>(width),
+                        static_cast<float>(height)};
+    SDL_RenderTexture(s.renderer, texture, nullptr, &dst);
+}
+
+void bgt_draw_image_rotated(int image_id, int x, int y, double angle)
+{
+    State &s = state();
+    if (!ensure_open(s)) {
+        return;
+    }
+    SDL_Texture *texture = get_image(s, image_id);
+    if (texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    if (!SDL_GetTextureSize(texture, &width, &height)) {
+        s.set_error(BGT_ERROR_IMAGE, "failed to query image size");
+        return;
+    }
+    const SDL_FRect dst{static_cast<float>(x), static_cast<float>(y),
+                        width, height};
+    // 旋转中心传 nullptr：SDL 自动取 dstrect 中心
+    SDL_RenderTextureRotated(s.renderer, texture, nullptr, &dst,
+                             static_cast<float>(angle), nullptr,
+                             SDL_FLIP_NONE);
+}
+
+void bgt_draw_image_rotated(int image_id, int x, int y, int width, int height,
+                            double angle)
+{
+    State &s = state();
+    if (!ensure_open(s) || width <= 0 || height <= 0) {
+        return;
+    }
+    SDL_Texture *texture = get_image(s, image_id);
+    if (texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    const SDL_FRect dst{static_cast<float>(x), static_cast<float>(y),
+                        static_cast<float>(width),
+                        static_cast<float>(height)};
+    SDL_RenderTextureRotated(s.renderer, texture, nullptr, &dst,
+                             static_cast<float>(angle), nullptr,
+                             SDL_FLIP_NONE);
+}
+
+void bgt_draw_image_flipped(int image_id, int x, int y, int flip)
+{
+    State &s = state();
+    if (!ensure_open(s)) {
+        return;
+    }
+    SDL_Texture *texture = get_image(s, image_id);
+    if (texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    if (!SDL_GetTextureSize(texture, &width, &height)) {
+        s.set_error(BGT_ERROR_IMAGE, "failed to query image size");
+        return;
+    }
+    const SDL_FRect dst{static_cast<float>(x), static_cast<float>(y),
+                        width, height};
+    SDL_RenderTextureRotated(s.renderer, texture, nullptr, &dst, 0.0F,
+                             nullptr, flip_mode_of(flip));
+}
+
+void bgt_draw_image_flipped(int image_id, int x, int y, int width, int height,
+                            int flip)
+{
+    State &s = state();
+    if (!ensure_open(s) || width <= 0 || height <= 0) {
+        return;
+    }
+    SDL_Texture *texture = get_image(s, image_id);
+    if (texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    const SDL_FRect dst{static_cast<float>(x), static_cast<float>(y),
+                        static_cast<float>(width),
+                        static_cast<float>(height)};
+    SDL_RenderTextureRotated(s.renderer, texture, nullptr, &dst, 0.0F,
+                             nullptr, flip_mode_of(flip));
 }
 
 bool bgt_set_font(const char filename[], int size)

@@ -243,6 +243,34 @@ int bgt_image_width(int image_id);
 // 返回图片的原始高度，单位是像素。image_id 无效时返回 0。
 int bgt_image_height(int image_id);
 
+// 在 (x, y) 位置以原始尺寸绘制图片。(x, y) 是图片左上角，与 bgt_fill_rect
+// 的定位方式一致。图片自带的透明部分会正确地与背景混合；绘制图片不受
+// bgt_set_color() 设置的当前颜色影响。image_id 无效时不绘制并记录错误。
+void bgt_draw_image(int image_id, int x, int y);
+
+// 在 (x, y) 位置把图片缩放到 width x height 后绘制。width 或 height 小于
+// 等于 0 时不绘制。
+void bgt_draw_image(int image_id, int x, int y, int width, int height);
+
+// 在 (x, y) 位置以原始尺寸绘制旋转后的图片。angle 是旋转角度，单位是度，
+// 正值表示顺时针旋转。旋转中心是图片中心。
+void bgt_draw_image_rotated(int image_id, int x, int y, double angle);
+
+// 在 (x, y) 位置把图片缩放到 width x height，再旋转 angle 度后绘制。
+// 旋转中心是绘制区域的中心。
+void bgt_draw_image_rotated(int image_id, int x, int y, int width, int height,
+                            double angle);
+
+// 在 (x, y) 位置以原始尺寸绘制镜像翻转后的图片。flip 使用 BGT_FLIP_NONE
+// （不翻转）、BGT_FLIP_HORIZONTAL（左右翻转）或 BGT_FLIP_VERTICAL（上下
+// 翻转）；其他值按不翻转处理。
+void bgt_draw_image_flipped(int image_id, int x, int y, int flip);
+
+// 在 (x, y) 位置把图片缩放到 width x height，再镜像翻转后绘制。flip 的
+// 取值与 bgt_draw_image_flipped() 相同。
+void bgt_draw_image_flipped(int image_id, int x, int y, int width, int height,
+                            int flip);
+
 // 设置后续文本绘制使用的字体文件和默认字号。filename 是字体文件路径，size 是
 // 默认字号。成功返回 true；失败返回 false。若不调用该函数，库会尝试使用系统
 // 自带的中文字体（Windows 下通常是微软雅黑）；找不到可用字体时文本绘制会失败
