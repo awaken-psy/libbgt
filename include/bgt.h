@@ -356,6 +356,23 @@ double bgt_total_time();
 // 返回最近统计到的实际帧率。刚开始运行时可能为 0，因为还没有足够帧数用于统计。
 double bgt_fps();
 
+// 设置随机数种子。设置相同种子后，程序接下来产生的随机数序列每次运行都完全
+// 相同，适合调试和课堂演示"可复现的随机"。不设置种子时，库会自动播种，因此
+// 每次运行得到的随机数都不同。通常不需要手动调用该函数。
+void bgt_random_seed(unsigned seed);
+
+// 返回一个 [min, max) 半开区间内的随机整数：包含 min、不包含 max。
+// 例如 bgt_random(0, 6) 可能得到 0~5，正好当长度为 6 的数组下标用；
+// 掷六面骰要写 bgt_random(1, 7)。min 大于 max 时会自动交换两者；
+// min 等于 max 时直接返回该值。
+int bgt_random(int min, int max);
+
+// 返回一个 [min, max) 半开区间内的随机浮点数：包含 min、不包含 max。
+// 想要小数时两个参数都要写小数：bgt_random(0.0, 1.0) 正确，
+// bgt_random(0, 1) 会调用整数版本。min 大于 max 时会自动交换两者；
+// min 等于 max 时直接返回该值。
+double bgt_random(double min, double max);
+
 // 判断库内部是否记录了错误。通常在某个返回 false 的函数之后调用。
 bool bgt_has_error();
 

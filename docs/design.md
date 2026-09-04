@@ -526,5 +526,8 @@ libbgt/
 不依赖仓库内的字体文件。
 
 v0.2 图片子系统已实现：`third_party/SDL_image` submodule、图片加载/绘制/
-缩放/旋转/翻转 API（见 `docs/api-v0.2.md`）。碰撞检测与随机数将在 v0.2 后续
+缩放/旋转/翻转 API（见 `docs/api-v0.2.md`）。v0.2 随机数已实现：统一
+入口 `bgt_random`（整数/小数重载，半开区间 [min, max)）与随机种子
+`bgt_random_seed`（见 `docs/api-v0.2.md`），配套最小显式检查测试
+（`BGT_BUILD_TESTS`）。碰撞检测将在 v0.2 后续
 版本补充。

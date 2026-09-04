@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -172,6 +173,14 @@ State &state()
 {
     static State instance;
     return instance;
+}
+
+// 与窗口生命周期无关的随机数引擎；首次使用时用 random_device 自动播种，
+// 因此学生不调用 bgt_random_seed 也能得到每次运行都不同的随机序列。
+std::mt19937 &random_engine()
+{
+    static std::mt19937 engine{std::random_device{}()};
+    return engine;
 }
 
 int clamp_byte(int value)
@@ -1723,6 +1732,33 @@ double bgt_total_time()
 double bgt_fps()
 {
     return state().fps;
+}
+
+void bgt_random_seed(unsigned seed)
+{
+    random_engine().seed(seed);
+}
+
+int bgt_random(int min, int max)
+{
+    if (min > max) {
+        std::swap(min, max);
+    }
+    if (min >= max) {
+        return min;
+    }
+    return std::uniform_int_distribution<int>(min, max - 1)(random_engine());
+}
+
+double bgt_random(double min, double max)
+{
+    if (min > max) {
+        std::swap(min, max);
+    }
+    if (min >= max) {
+        return min;
+    }
+    return std::uniform_real_distribution<double>(min, max)(random_engine());
 }
 
 bool bgt_has_error()
