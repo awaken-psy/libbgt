@@ -1761,6 +1761,84 @@ double bgt_random(double min, double max)
     return std::uniform_real_distribution<double>(min, max)(random_engine());
 }
 
+bool bgt_hit_point_rect(int px, int py, int x, int y, int width, int height)
+{
+    // 全部升为 long long：x + width 在坐标接近 INT_MAX 时不会溢出。
+    const long long right = static_cast<long long>(x) + width;
+    const long long bottom = static_cast<long long>(y) + height;
+    return px >= x && px < right && py >= y && py < bottom;
+}
+
+bool bgt_hit_point_circle(int px, int py, int x, int y, int radius)
+{
+    // 负半径平方后会变正，必须显式守卫。
+    if (radius <= 0) {
+        return false;
+    }
+    const long long dx = static_cast<long long>(px) - x;
+    const long long dy = static_cast<long long>(py) - y;
+    const long long r = radius;
+    return dx * dx + dy * dy <= r * r;
+}
+
+bool bgt_hit_rect_rect(int x1, int y1, int width1, int height1,
+                       int x2, int y2, int width2, int height2)
+{
+    // 显式守卫：空矩形被另一矩形"跨立"时严格不等式仍会成立，
+    // 必须先排除（与圆形函数的半径守卫同理）。
+    if (width1 <= 0 || height1 <= 0 || width2 <= 0 || height2 <= 0) {
+        return false;
+    }
+    // 严格不等式：恰好共享边/角时不成立，贴边自然不算命中。
+    const long long a_right = static_cast<long long>(x1) + width1;
+    const long long a_bottom = static_cast<long long>(y1) + height1;
+    const long long b_right = static_cast<long long>(x2) + width2;
+    const long long b_bottom = static_cast<long long>(y2) + height2;
+    return x1 < b_right && x2 < a_right && y1 < b_bottom && y2 < a_bottom;
+}
+
+bool bgt_hit_circle_circle(int x1, int y1, int radius1, int x2, int y2,
+                           int radius2)
+{
+    // 逐个守卫，不能用 radius1 + radius2 <= 0（5 与 -3 的和为 2，会漏过）。
+    if (radius1 <= 0 || radius2 <= 0) {
+        return false;
+    }
+    const long long dx = static_cast<long long>(x1) - x2;
+    const long long dy = static_cast<long long>(y1) - y2;
+    const long long sum = static_cast<long long>(radius1) + radius2;
+    return dx * dx + dy * dy < sum * sum;
+}
+
+bool bgt_hit_circle_rect(int cx, int cy, int radius, int x, int y,
+                         int width, int height)
+{
+    if (radius <= 0 || width <= 0 || height <= 0) {
+        return false;
+    }
+    // 把圆心"夹"进矩形，得到矩形上离圆心最近的点，再比较距离与半径。
+    const long long right = static_cast<long long>(x) + width;
+    const long long bottom = static_cast<long long>(y) + height;
+    long long nearest_x = cx;
+    long long nearest_y = cy;
+    if (nearest_x < x) {
+        nearest_x = x;
+    }
+    if (nearest_x > right) {
+        nearest_x = right;
+    }
+    if (nearest_y < y) {
+        nearest_y = y;
+    }
+    if (nearest_y > bottom) {
+        nearest_y = bottom;
+    }
+    const long long dx = cx - nearest_x;
+    const long long dy = cy - nearest_y;
+    const long long r = radius;
+    return dx * dx + dy * dy < r * r;
+}
+
 bool bgt_has_error()
 {
     return state().error_code != BGT_ERROR_NONE;

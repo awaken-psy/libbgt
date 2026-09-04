@@ -373,6 +373,33 @@ int bgt_random(int min, int max);
 // min 等于 max 时直接返回该值。
 double bgt_random(double min, double max);
 
+// 判断点 (px, py) 是否在矩形上：x、y 是矩形左上角，width、height 是宽高。
+// 命中范围与 fill_rect 实际画出的像素完全一致——包含左、上边界，不包含
+// 右、下边界（即 x <= px < x + width）。width 或 height 小于等于 0 时矩形
+// 是"空的"，恒返回 false。
+bool bgt_hit_point_rect(int px, int py, int x, int y, int width, int height);
+
+// 判断点 (px, py) 是否在圆上：x、y 是圆心，radius 是半径。点到圆心的
+// 距离不超过 radius 就算命中（圆周上的点算）。radius 小于等于 0 时恒返回
+// false。
+bool bgt_hit_point_circle(int px, int py, int x, int y, int radius);
+
+// 判断两个矩形是否实际重叠。只有真实共有一部分面积才返回 true；
+// 恰好贴边、贴角不算。宽或高小于等于 0 的矩形是"空的"，恒返回 false。
+bool bgt_hit_rect_rect(int x1, int y1, int width1, int height1,
+                       int x2, int y2, int width2, int height2);
+
+// 判断两个圆是否实际重叠。只有真实重叠才返回 true；恰好相切不算。
+// radius1 或 radius2 小于等于 0 时恒返回 false。
+bool bgt_hit_circle_circle(int x1, int y1, int radius1, int x2, int y2,
+                           int radius2);
+
+// 判断圆与矩形是否实际重叠。(cx, cy) 是圆心，radius 是半径；
+// (x, y, width, height) 描述矩形。圆心在矩形内部（含边上）算命中；
+// 圆在矩形外侧恰好相切不算。radius 或宽、高小于等于 0 时恒返回 false。
+bool bgt_hit_circle_rect(int cx, int cy, int radius, int x, int y,
+                         int width, int height);
+
 // 判断库内部是否记录了错误。通常在某个返回 false 的函数之后调用。
 bool bgt_has_error();
 

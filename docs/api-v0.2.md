@@ -1,16 +1,18 @@
-# libbgt v0.2 API 文档（图片、随机数）
+# libbgt v0.2 API 文档（图片、随机数、碰撞检测）
 
-本文档描述 `libbgt` v0.2 新增的图片与随机数接口：图片部分从文件加载图片，
-并通过设置每张图片的 RST 变换状态（RST = 平移-旋转-缩放）来控制它在画面上
-的样子；随机数部分提供可播种的随机整数与随机浮点数。
+本文档描述 `libbgt` v0.2 新增的图片、随机数与碰撞检测接口：图片部分从
+文件加载图片，并通过设置每张图片的 RST 变换状态（RST = 平移-旋转-缩放）
+来控制它在画面上的样子；随机数部分提供可播种的随机整数与随机浮点数；
+碰撞检测部分回答"这两个形状碰上了吗""鼠标点中它了吗"这类游戏中最
+常见的问题。
 所有函数沿用 v0.1 的基本约定（`bgt_` 前缀、`snake_case`、整数坐标）。
 
 v0.1 的基础接口（窗口、图形、文本、输入、时间、错误信息）见
-[api-v0.md](api-v0.md)。v0.2 计划中的碰撞检测章节将在后续版本补充。
+[api-v0.md](api-v0.md)。
 
 图片解码由随仓库提供的 SDL3_image 子模块完成，默认静态链接进示例程序，
-运行时不需要附带额外的 DLL。图片完整示例见 `examples/09_images.cpp`，
-随机数完整示例见 `examples/10_random.cpp`。
+运行时不需要附带额外的 DLL。图片完整示例见 `examples/09_images.cpp`，随机数完整示例见
+`examples/10_random.cpp`，碰撞检测完整示例见 `examples/11_collision.cpp`。
 
 ## 1. RST 变换模型
 
@@ -451,7 +453,167 @@ int b = bgt_random(1, 100);     // b 和 a 相同
 - 随机游走（示例 10 板块 3）是"随机数 + 每帧调用"的经典组合，也是后续
   课程里游戏 AI（随机巡逻）的雏形。
 
-## 7. 新增常量清单
+## 7. 碰撞检测
+
+碰撞检测回答游戏开发里最常问的两个问题："这两个东西碰上了吗？""鼠标
+点中它了吗？"libbgt 提供矩形、圆、点两两之间的全部组合（点与点用 `==`
+比较即可，不单独提供）：
+
+```cpp
+bool bgt_hit_point_rect(int px, int py, int x, int y, int width, int height);
+bool bgt_hit_point_circle(int px, int py, int x, int y, int radius);
+bool bgt_hit_rect_rect(int x1, int y1, int width1, int height1,
+                       int x2, int y2, int width2, int height2);
+bool bgt_hit_circle_circle(int x1, int y1, int radius1,
+                           int x2, int y2, int radius2);
+bool bgt_hit_circle_rect(int cx, int cy, int radius,
+                         int x, int y, int width, int height);
+```
+
+命名规则：**名字顺序就是参数顺序**；每个形状的参数与它的绘图函数完全
+一致（矩形 `(x, y, width, height)` 同 `bgt_fill_rect`，圆 `(x, y, radius)`
+同 `bgt_draw_circle`，点用 `px`、`py`）。
+
+两条核心语义：
+
+1. **形状与形状：实际重叠才算命中**。恰好相切、恰好贴边、恰好贴角都
+   返回 false——"刚碰到"和"没碰到"是两种不同的状态，把相切归为不碰，
+   游戏逻辑更简单。
+2. **点测：命中范围与画出的像素一致**。点落在图形上（含边界像素）就算
+   命中：`bgt_hit_point_rect` 的范围与 `bgt_fill_rect` 实际覆盖的像素完全
+   相同，矩形边框上的点返回 true，边框外一个像素返回 false。
+
+碰撞函数是纯几何计算，不依赖窗口（不开窗也能调用）；退化形状（宽、高或
+半径小于等于 0）永远不命中，也不会记录错误。完整示例见
+`examples/11_collision.cpp`。
+
+### `bgt_hit_point_rect`
+
+判断点 (px, py) 是否在矩形上。
+
+```cpp
+bool bgt_hit_point_rect(int px, int py, int x, int y, int width, int height);
+```
+
+参数：
+
+- `px`、`py`：点的坐标。
+- `x`、`y`：矩形左上角。
+- `width`、`height`：矩形宽高。
+
+说明：
+
+- 命中范围是 `x <= px < x + width` 且 `y <= py < y + height`——与
+  `bgt_fill_rect` 画出的像素完全一致。
+- "点按钮"的标准写法：
+
+```cpp
+if (bgt_hit_point_rect(bgt_mouse_x(), bgt_mouse_y(), 100, 100, 200, 80)) {
+    // 鼠标指针在 (100, 100, 200, 80) 这个"按钮"上
+}
+```
+
+### `bgt_hit_point_circle`
+
+判断点 (px, py) 是否在圆上。
+
+```cpp
+bool bgt_hit_point_circle(int px, int py, int x, int y, int radius);
+```
+
+参数：
+
+- `px`、`py`：点的坐标。
+- `x`、`y`：圆心坐标。
+- `radius`：半径。
+
+说明：
+
+- 点到圆心的距离不超过 radius 就算命中：圆周上的点算，圆外一步不算。
+- "打靶"点击的标准写法：
+
+```cpp
+if (bgt_mouse_just_pressed(BGT_MOUSE_LEFT) &&
+    bgt_hit_point_circle(bgt_mouse_x(), bgt_mouse_y(), 500, 400, 60)) {
+    // 这次点击命中了圆心 (500, 400)、半径 60 的靶子
+}
+```
+
+- `radius` 小于等于 0 时恒返回 false。
+
+### `bgt_hit_rect_rect`
+
+判断两个矩形是否实际重叠。
+
+```cpp
+bool bgt_hit_rect_rect(int x1, int y1, int width1, int height1,
+                       int x2, int y2, int width2, int height2);
+```
+
+说明：
+
+- 判定方法是两个方向都"互相压过对方的边"：
+
+```text
+x1 < x2 + width2  且  x2 < x1 + width1   （横向重叠）
+y1 < y2 + height2 且  y2 < y1 + height1  （纵向重叠）
+```
+
+- 只要共有一像素的面积才算命中；恰好共享一条边、只贴一个角、完全分离
+  都不算。
+- 一个矩形完全套住另一个矩形算命中。
+- 宽或高小于等于 0 的矩形是"空的"，恒返回 false。
+
+### `bgt_hit_circle_circle`
+
+判断两个圆是否实际重叠。
+
+```cpp
+bool bgt_hit_circle_circle(int x1, int y1, int radius1,
+                           int x2, int y2, int radius2);
+```
+
+说明：
+
+- 圆心距的平方小于半径和的平方才命中：`dx*dx + dy*dy < (r1+r2)*(r1+r2)`。
+- 恰好相切（圆心距恰好等于 r1 + r2）不算命中。
+- 一个圆完全套住另一个圆算命中。
+- 任一半径小于等于 0 时恒返回 false。
+
+### `bgt_hit_circle_rect`
+
+判断圆与矩形是否实际重叠。
+
+```cpp
+bool bgt_hit_circle_rect(int cx, int cy, int radius,
+                         int x, int y, int width, int height);
+```
+
+说明：
+
+- 判定方法：把圆心"夹"进矩形，得到矩形上离圆心最近的点，比较这段距离
+  与半径——比半径小就命中。
+- 圆心在矩形内部（含边上）时必然命中（此时最近距离是 0）。
+- 圆在矩形外侧恰好擦到边或角（距离恰好等于半径）不算命中。
+- 这是"球撞挡板"（Pong、打砖块类）的标准判断。
+
+### 碰撞检测教学注记
+
+- **相切不算碰要眼见为实**：示例 11 板块 4 让学生把圆移到"看起来刚碰上"
+  的相切位置，亲眼看到返回 false——把语义规则变成可发现的实验。
+- **先自己写，再和库对拍**：`bgt_hit_rect_rect`、`bgt_hit_point_rect`
+  只有一行布尔表达式，是绝佳作业。让学生自己实现一个版本，再和库函数
+  对拍几十组数据（相同输入应当返回相同结果）——比从零调试更有教学价值。
+- `bgt_mouse_x()/bgt_mouse_y()` + 点测是最高频组合：点按钮、点菜单、
+  点目标。
+- 圆×矩形的"夹住求最近点"算法初学者自己发明不出来，正适合由库提供。
+- 椭圆、三角形不提供碰撞：椭圆×椭圆需要坐标变换，三角形×三角形需要
+  多边形分离轴算法，超出教学定位；有需要时用"圆或矩形包住"近似。
+- 极端坐标：内部用 64 位整数计算，单轴坐标差 ±3×10⁹（或两轴同时各
+  ±2×10⁹）内绝不溢出，覆盖一切教学场景；两轴同时近 ±3×10⁹ 的极端组合
+  行为未定义。
+
+## 8. 新增常量清单
 
 v0.2 新增的常量：
 
@@ -459,7 +621,7 @@ v0.2 新增的常量：
 BGT_IMAGE_NONE
 ```
 
-随机数接口没有新增常量，也没有新增错误码。
+随机数与碰撞检测接口没有新增常量，也没有新增错误码。
 
 v0.2 新增的错误码是 `BGT_ERROR_IMAGE`，追加在 v0.1 错误码序列的末尾：
 

@@ -138,6 +138,7 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_api_tour examples/08_api_tour.cpp)
     bgt_add_example(bgt_images examples/09_images.cpp)
     bgt_add_example(bgt_random examples/10_random.cpp)
+    bgt_add_example(bgt_collision examples/11_collision.cpp)
 
     add_custom_command(
         TARGET bgt_images
@@ -164,6 +165,12 @@ if(BGT_BUILD_TESTS)
     set_target_properties(bgt_test_random PROPERTIES CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
     add_test(NAME bgt_test_random COMMAND bgt_test_random)
+
+    add_executable(bgt_test_collision tests/test_collision.cpp)
+    target_link_libraries(bgt_test_collision PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_collision PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_collision COMMAND bgt_test_collision)
 endif()
 
 if(BGT_BUILD_VENDORED)
