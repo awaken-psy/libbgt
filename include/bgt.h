@@ -113,9 +113,6 @@
 #define BGT_MOUSE_MIDDLE 3
 
 #define BGT_IMAGE_NONE 0
-#define BGT_FLIP_NONE 0
-#define BGT_FLIP_HORIZONTAL 1
-#define BGT_FLIP_VERTICAL 2
 
 #define BGT_ERROR_NONE 0
 #define BGT_ERROR_SDL 1
@@ -229,12 +226,10 @@ void bgt_set_line_width(int width);
 // 返回当前线条宽度。
 int bgt_get_line_width();
 
-// 从文件加载一张图片，支持 PNG、JPG、BMP 等常见格式。filename 是按 UTF-8
-// 解释的图片文件路径。加载成功返回一个大于 0 的图片编号（图片 ID），失败返回
-// BGT_IMAGE_NONE（也就是 0），此时可以调用 bgt_print_error() 查看原因。图片
-// 编号用于后续的绘制和尺寸查询。请在主循环外加载图片：同一文件多次加载会
-// 得到多个互相独立的编号。图片由库统一管理，程序结束时自动释放，不需要
-// （也没有）手动释放的函数；关闭窗口后所有编号失效，需要重新加载。
+// 从文件加载一张图片，支持 PNG、JPG、BMP 等常见格式。filename 是按 UTF-8 解释的图片文件路径。
+// 加载成功返回一个大于 0 的图片编号，失败返回 BGT_IMAGE_NONE（0），此时可调用 bgt_print_error() 查看原因。
+// 请在主循环外加载图片：同一文件多次加载会得到多个互相独立的编号。
+// 图片由库统一管理，程序结束时自动释放；关闭窗口后所有编号失效，需要重新加载。
 int bgt_load_image(const char filename[]);
 
 // 返回图片的原始宽度，单位是像素。image_id 无效时返回 0。
@@ -243,33 +238,35 @@ int bgt_image_width(int image_id);
 // 返回图片的原始高度，单位是像素。image_id 无效时返回 0。
 int bgt_image_height(int image_id);
 
-// 在 (x, y) 位置以原始尺寸绘制图片。(x, y) 是图片左上角，与 bgt_fill_rect
-// 的定位方式一致。图片自带的透明部分会正确地与背景混合；绘制图片不受
-// bgt_set_color() 设置的当前颜色影响。image_id 无效时不绘制并记录错误。
+// T（平移）：设置图片相对绘制位置的偏移量。bgt_draw_image 的 (x, y) 加上
+// 这里的 (dx, dy) 得到最终的平移位置：图片的局部原点（左上角）会落在
+// (x + dx, y + dy)。默认 (0, 0)（无偏移）。image_id 无效时不修改并记录错误。
+void bgt_translate_image(int image_id, int dx, int dy);
+
+// R（旋转）：设置图片的旋转角度。angle 单位是度，正值表示顺时针。
+// 旋转围绕图片的局部原点（左上角）进行——旋转后左上角位置不变，
+// 图片整体绕它转动。默认 0（不旋转）。image_id 无效时不修改并记录错误。
+void bgt_rotate_image(int image_id, double angle);
+
+// S（缩放）：设置图片的缩放倍率。sx、sy 是缩放因子：
+//   1.0 = 原始大小    2.0 = 放大一倍    0.5 = 缩小一半
+//   负值表示翻转：sx < 0 左右翻转（图片翻到原点左侧），
+//               sy < 0 上下翻转（图片翻到原点上方）
+// 缩放围绕图片的局部原点（左上角）进行——缩放后左上角位置不变。
+// 默认 (1.0, 1.0)（原始大小）。image_id 无效时不修改并记录错误。
+void bgt_scale_image(int image_id, double sx, double sy);
+
+// 清除图片的全部变换状态，恢复为恒等变换：T(0, 0)、R(0 度)、S(1.0, 1.0)。
+// 清除后图片回到刚加载时的样子。image_id 无效时不修改并记录错误。
+void bgt_clear_image_transform(int image_id);
+
+// 在基准位置 (x, y) 绘制图片，应用该图当前的全部变换状态。
+// 变换的合成顺序为：先缩放（S），再旋转（R），最后平移（T），
+// 即 M = T(x + dx, y + dy) * R(angle) * S(sx, sy)。
+// 图片的局部原点（左上角）最终落在 (x + dx, y + dy)。
+// 图片自带的透明部分会正确地与背景混合；绘制图片不受 bgt_set_color()
+// 设置的当前颜色影响。image_id 无效时不绘制并记录错误。
 void bgt_draw_image(int image_id, int x, int y);
-
-// 在 (x, y) 位置把图片缩放到 width x height 后绘制。width 或 height 小于
-// 等于 0 时不绘制。
-void bgt_draw_image(int image_id, int x, int y, int width, int height);
-
-// 在 (x, y) 位置以原始尺寸绘制旋转后的图片。angle 是旋转角度，单位是度，
-// 正值表示顺时针旋转。旋转中心是图片中心。
-void bgt_draw_image_rotated(int image_id, int x, int y, double angle);
-
-// 在 (x, y) 位置把图片缩放到 width x height，再旋转 angle 度后绘制。
-// 旋转中心是绘制区域的中心。
-void bgt_draw_image_rotated(int image_id, int x, int y, int width, int height,
-                            double angle);
-
-// 在 (x, y) 位置以原始尺寸绘制镜像翻转后的图片。flip 使用 BGT_FLIP_NONE
-// （不翻转）、BGT_FLIP_HORIZONTAL（左右翻转）或 BGT_FLIP_VERTICAL（上下
-// 翻转）；其他值按不翻转处理。
-void bgt_draw_image_flipped(int image_id, int x, int y, int flip);
-
-// 在 (x, y) 位置把图片缩放到 width x height，再镜像翻转后绘制。flip 的
-// 取值与 bgt_draw_image_flipped() 相同。
-void bgt_draw_image_flipped(int image_id, int x, int y, int width, int height,
-                            int flip);
 
 // 设置后续文本绘制使用的字体文件和默认字号。filename 是字体文件路径，size 是
 // 默认字号。成功返回 true；失败返回 false。若不调用该函数，库会尝试使用系统
