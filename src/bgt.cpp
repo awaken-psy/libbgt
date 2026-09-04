@@ -1541,11 +1541,13 @@ bool valid_section_name(const std::string &name)
            name.find('\n') == std::string::npos;
 }
 
-// 键名规则：非空，且不含 = 和换行（= 是行内的键值分隔符）。
+// 键名规则：非空，不含 = 和换行；且首字符不能是 # 或 [——否则写盘后
+// 会被读回逻辑误判成注释行或节头，存档读不回来。
 bool valid_key_name(const std::string &name)
 {
     return !name.empty() && name.find('=') == std::string::npos &&
-           name.find('\n') == std::string::npos;
+           name.find('\n') == std::string::npos &&
+           name.front() != '#' && name.front() != '[';
 }
 
 // 整理并校验节名与键名。不合法时记录错误并返回 false。
@@ -1678,8 +1680,14 @@ void bgt_set_string(const char section[], const char key[], const char value[])
     if (!storage_names(section, key, section_name, key_name)) {
         return;
     }
-    state().storage[section_name][key_name] =
+    const std::string text =
         value == nullptr ? std::string() : trim_copy(value);
+    if (text.find('\n') != std::string::npos) {
+        state().set_error(
+            BGT_ERROR_STORAGE, "string value must not contain a newline");
+        return;
+    }
+    state().storage[section_name][key_name] = text;
 }
 
 int bgt_get_int(const char section[], const char key[], int default_value)

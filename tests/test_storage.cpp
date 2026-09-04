@@ -106,6 +106,19 @@ int main()
     bgt_set_int("坏[节]", "x", 1);
     BGT_CHECK(bgt_has_error());
     bgt_clear_error();
+    bgt_set_int("节", "#k", 1); // # 开头的键存盘后会丢，set 时就拒绝
+    BGT_CHECK(bgt_has_error());
+    BGT_CHECK(bgt_get_int("节", "#k", 5) == 5); // 没存进去
+    bgt_clear_error();
+    bgt_set_int("节", "[k", 1); // [ 开头的键同理
+    BGT_CHECK(bgt_has_error());
+    bgt_clear_error();
+    bgt_set_string("节", "k", "a\nb"); // 值含换行会写坏存档
+    BGT_CHECK(bgt_has_error());
+    char multi[8] = {};
+    bgt_get_string("节", "k", multi, 8, "?");
+    BGT_CHECK(text_equals(multi, "?")); // 没存进去
+    bgt_clear_error();
     BGT_CHECK(bgt_get_int("", "x", 4) == 4); // get 同样校验并记错
     BGT_CHECK(bgt_has_error());
     bgt_clear_error();
