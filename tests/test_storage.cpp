@@ -7,6 +7,9 @@
 
 #include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <iterator>
+#include <string>
 
 // NOLINTBEGIN(readability-magic-numbers)
 
@@ -121,6 +124,146 @@ int main()
     bgt_get_string("截断", "long", nullptr, 0, "?"); // 无处可写 → 仅记错
     BGT_CHECK(bgt_has_error());
     bgt_clear_error();
+
+    // 8) 缺文件 load：返回 true、空表、无错误（第一次运行的常态）。
+    //    顺带验证：空表 save 产出 0 字节文件。
+    constexpr const char *k_test_file = "bgt_test_storage.tmp";
+    std::remove(k_test_file);
+    std::remove((std::string(k_test_file) + ".tmp").c_str());
+    bgt_clear_error();
+    BGT_CHECK(bgt_load(k_test_file));
+    BGT_CHECK(!bgt_has_error());
+    BGT_CHECK(bgt_get_int("进度", "count", 0) == 0); // 表是空的
+    BGT_CHECK(bgt_save(k_test_file));               // 空表 → 0 字节文件
+    {
+        std::ifstream file(k_test_file, std::ios::binary);
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        BGT_CHECK(content.empty());
+    }
+
+    // 9) 整表往返：set → save → 改内存 → load → 逐键读回。
+    //    先用一次“缺文件 load”把内存表清空，保证写盘内容可精确断言。
+    std::remove(k_test_file);
+    bgt_clear_error();
+    BGT_CHECK(bgt_load(k_test_file)); // 文件不存在 → 清空内存表
+    bgt_set_int("最高分", "best", 321);
+    bgt_set_double("进度", "time", 45.5);
+    bgt_set_string("玩家", "name", "李四");
+    BGT_CHECK(bgt_save(k_test_file));
+    BGT_CHECK(bgt_file_exists(k_test_file));
+    bgt_set_int("最高分", "best", -77); // 只改内存
+    BGT_CHECK(bgt_load(k_test_file));   // load 整表替换内存
+    BGT_CHECK(bgt_get_int("最高分", "best", 0) == 321);
+    BGT_CHECK(bgt_get_double("进度", "time", 0.0) == 45.5);
+    char who[16] = {};
+    bgt_get_string("玩家", "name", who, 16, "?");
+    BGT_CHECK(text_equals(who, "李四"));
+
+    // 10) 写盘格式：节与节内键都按字典序（按 UTF-8 字节序），行尾 \n。
+    {
+        std::ifstream file(k_test_file, std::ios::binary);
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        // 字节序：最高分(E6..) < 玩家(E7..) < 进度(E8..)
+        BGT_CHECK(content ==
+                  "[最高分]\nbest=321\n\n[玩家]\nname=李四\n\n"
+                  "[进度]\ntime=45.5\n\n");
+    }
+
+    // 11) load 的整表替换：读入后，之前只在内存里的键消失。
+    bgt_clear_error();
+    bgt_set_int("临时", "x", 1);
+    BGT_CHECK(bgt_load(k_test_file));
+    BGT_CHECK(bgt_get_int("临时", "x", 0) == 0);
+
+    // 12) 手写文件：# 注释、\r\n 行尾、UTF-8 BOM、键值两侧空格都能读。
+    {
+        std::ofstream file(k_test_file, std::ios::binary | std::ios::trunc);
+        file << "\xEF\xBB\xBF";
+        file << "# 用记事本写的存档\r\n";
+        file << "\r\n";
+        file << "[设置]\r\n";
+        file << " volume = 80 \r\n"; // 键值两侧的空格会被去掉
+        file << "muted=true\r\n";
+    }
+    bgt_clear_error();
+    BGT_CHECK(bgt_load(k_test_file));
+    BGT_CHECK(!bgt_has_error());
+    BGT_CHECK(bgt_get_int("设置", "volume", 0) == 80);
+    char muted[8] = {};
+    bgt_get_string("设置", "muted", muted, 8, "?");
+    BGT_CHECK(text_equals(muted, "true"));
+
+    // 13) 坏行容错：节头前的键值行、没有 = 的行、坏节头都跳过并记错，
+    //     好行照常生效；load 返回 false。坏节头之后的键值行也判为坏行
+    //     （不会悄悄归进前一个节）。
+    {
+        std::ofstream file(k_test_file, std::ios::binary | std::ios::trunc);
+        file << "孤儿=1\n";   // 节头之前 → 坏行
+        file << "[好节]\n";
+        file << "ok=42\n";
+        file << "没有等号的行\n"; // → 坏行
+        file << "[坏节\n";        // 缺 ] → 坏行
+        file << "also=7\n";       // 坏节头之后 → 也是坏行
+    }
+    bgt_clear_error();
+    BGT_CHECK(!bgt_load(k_test_file)); // 有坏行 → false
+    BGT_CHECK(bgt_has_error());
+    BGT_CHECK(bgt_error_code() == BGT_ERROR_STORAGE);
+    BGT_CHECK(bgt_get_int("好节", "ok", 0) == 42);  // 好行仍生效
+    BGT_CHECK(bgt_get_int("好节", "also", 0) == 0); // 坏节头后的行不收编
+    bgt_clear_error();
+
+    // 14) 重复节头合并、重复键后者覆盖、空节往返保留。
+    {
+        std::ofstream file(k_test_file, std::ios::binary | std::ios::trunc);
+        file << "[节一]\n";
+        file << "a=1\n";
+        file << "[节二]\n";
+        file << "b=2\n";
+        file << "[节一]\n"; // 重复节头 = 同一节继续
+        file << "a=9\n";   // 重复键后者覆盖
+        file << "[空节]\n";
+    }
+    bgt_clear_error();
+    BGT_CHECK(bgt_load(k_test_file));
+    BGT_CHECK(bgt_get_int("节一", "a", 0) == 9);
+    BGT_CHECK(bgt_get_int("节二", "b", 0) == 2);
+    BGT_CHECK(bgt_save(k_test_file));
+    {
+        std::ifstream file(k_test_file, std::ios::binary);
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        // 字节序：空节(E7..) < 节一/节二(E8..)，一(B8..) < 二(BA..)
+        BGT_CHECK(content == "[空节]\n\n[节一]\na=9\n\n[节二]\nb=2\n\n");
+    }
+
+    // 15) 超范围整数文本：按 int 读 → 默认值 + 记错；按 double 读得动。
+    bgt_clear_error();
+    bgt_set_string("大数", "x", "5000000000");
+    BGT_CHECK(bgt_get_int("大数", "x", 3) == 3);
+    BGT_CHECK(bgt_error_code() == BGT_ERROR_STORAGE);
+    bgt_clear_error();
+    BGT_CHECK(bgt_get_double("大数", "x", 0.0) == 5000000000.0);
+    bgt_clear_error();
+
+    // 16) file_exists 两态；save 到不存在的目录会失败并记错。
+    std::remove(k_test_file);
+    BGT_CHECK(!bgt_file_exists(k_test_file));
+    bgt_set_int("临时", "x", 1);
+    BGT_CHECK(bgt_save(k_test_file));
+    BGT_CHECK(bgt_file_exists(k_test_file));
+    bgt_clear_error();
+    BGT_CHECK(!bgt_save("不存在的目录/x.txt")); // 建不了文件 → 记错
+    BGT_CHECK(bgt_has_error());
+    bgt_clear_error();
+    BGT_CHECK(bgt_load("不存在的目录/x.txt")); // 不存在 → 空表、无错
+    BGT_CHECK(!bgt_has_error());
+
+    // 17) 清理测试文件。
+    std::remove(k_test_file);
+    std::remove((std::string(k_test_file) + ".tmp").c_str());
 
     if (g_failed_checks > 0) {
         std::fprintf(stderr, "bgt_test_storage: %d checks failed\n",

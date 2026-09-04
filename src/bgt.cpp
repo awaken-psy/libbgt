@@ -1762,6 +1762,144 @@ void bgt_get_string(const char section[], const char key[], char out[],
                 "string value is too long for the output array");
 }
 
+bool bgt_load(const char filename[])
+{
+    State &s = state();
+    if (filename == nullptr || filename[0] == '\0') {
+        s.set_error(BGT_ERROR_STORAGE, "storage filename is empty");
+        return false;
+    }
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file) {
+        if (std::filesystem::exists(filename)) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "failed to open storage file " +
+                            std::string(filename));
+            return false;
+        }
+        // 文件不存在是正常情况（比如游戏第一次运行）：空表、无错误。
+        s.storage.clear();
+        return true;
+    }
+    // 容忍记事本写出的 UTF-8 BOM。
+    char bom[3] = {};
+    file.read(bom, 3);
+    if (!(bom[0] == '\xEF' && bom[1] == '\xBB' && bom[2] == '\xBF')) {
+        file.clear();
+        file.seekg(0);
+    }
+    s.storage.clear();
+    std::string line;
+    std::string section;
+    bool in_section = false; // 节头之前（或坏节头之后）的键值行判为坏行
+    bool all_lines_ok = true;
+    while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        const std::string trimmed = trim_copy(line);
+        if (trimmed.empty() || trimmed.front() == '#') {
+            continue; // 空行与 # 整行注释
+        }
+        if (trimmed.front() == '[') {
+            std::string name;
+            bool ok = false;
+            if (trimmed.back() == ']') {
+                name = trim_copy(trimmed.substr(1, trimmed.size() - 2));
+                ok = valid_section_name(name);
+            }
+            if (!ok) {
+                s.set_error(BGT_ERROR_STORAGE,
+                            "bad line in storage file: '" + trimmed + "'");
+                all_lines_ok = false;
+                in_section = false;
+                continue;
+            }
+            section = name;
+            in_section = true;
+            s.storage[section]; // 空节也登记，往返时保留
+            continue;
+        }
+        const std::size_t eq = line.find('=');
+        if (eq == std::string::npos || !in_section) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "bad line in storage file: '" + trimmed + "'");
+            all_lines_ok = false;
+            continue;
+        }
+        const std::string key = trim_copy(line.substr(0, eq));
+        if (!valid_key_name(key)) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "bad line in storage file: '" + trimmed + "'");
+            all_lines_ok = false;
+            continue;
+        }
+        const std::string value = trim_copy(line.substr(eq + 1));
+        s.storage[section][key] = value;
+    }
+    if (file.bad()) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "failed while reading storage file " +
+                        std::string(filename));
+        return false;
+    }
+    return all_lines_ok;
+}
+
+bool bgt_save(const char filename[])
+{
+    State &s = state();
+    if (filename == nullptr || filename[0] == '\0') {
+        s.set_error(BGT_ERROR_STORAGE, "storage filename is empty");
+        return false;
+    }
+    // 先写临时文件，成功后再整体替换，避免写一半把旧存档弄坏。
+    const std::string temp_name = std::string(filename) + ".tmp";
+    {
+        std::ofstream file(temp_name,
+                           std::ios::out | std::ios::binary | std::ios::trunc);
+        if (!file) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "failed to create storage file " + temp_name);
+            return false;
+        }
+        for (const auto &section : s.storage) {
+            file << '[' << section.first << "]\n";
+            for (const auto &entry : section.second) {
+                file << entry.first << '=' << entry.second << '\n';
+            }
+            file << '\n';
+        }
+        file.flush();
+        if (!file) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "failed while writing storage file " + temp_name);
+            return false;
+        }
+    }
+    std::error_code rename_error;
+    std::filesystem::remove(filename, rename_error); // 目标存在时先移除
+    rename_error.clear();
+    std::filesystem::rename(temp_name, filename, rename_error);
+    if (rename_error) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "failed to replace storage file " +
+                        std::string(filename) + ": " +
+                        rename_error.message());
+        return false;
+    }
+    return true;
+}
+
+bool bgt_file_exists(const char filename[])
+{
+    if (filename == nullptr || filename[0] == '\0') {
+        return false;
+    }
+    std::error_code error;
+    return std::filesystem::exists(filename, error);
+}
+
 bool bgt_has_error()
 {
     return state().error_code != BGT_ERROR_NONE;
