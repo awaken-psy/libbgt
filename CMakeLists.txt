@@ -157,6 +157,12 @@ endif()
 
 if(BGT_BUILD_TESTS)
     enable_testing()
+
+    add_executable(bgt_test_random tests/test_random.cpp)
+    target_link_libraries(bgt_test_random PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_random PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_random COMMAND bgt_test_random)
 endif()
 
 if(BGT_BUILD_VENDORED)
