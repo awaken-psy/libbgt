@@ -524,3 +524,7 @@ libbgt/
 
 实现范围与 `docs/api-v0.md` 保持一致。文本绘制默认使用系统自带中文字体，
 不依赖仓库内的字体文件。
+
+v0.2 图片子系统已实现：`third_party/SDL_image` submodule、图片加载/绘制/
+缩放/旋转/翻转 API（见 `docs/api-v0.2.md`）。碰撞检测与随机数将在 v0.2 后续
+版本补充。
