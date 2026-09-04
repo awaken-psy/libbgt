@@ -336,24 +336,25 @@ int main()
             bgt_set_background(bgt_rgb(250, 250, 250));
             bgt_set_window_title("libbgt 随机数演示 - 板块 4：随机种子");
 
-            // 第一次进入本板块、或按 R 时：重新生成两列数字
+            // 第一次进入本板块、或按 R 时：重新生成"不播种"的右列和
+            // 三个小数样例——它们延续全局序列，每次都不一样。
+            // （必须在下面的播种之前取数：播种会把全局序列固定下来。）
             if (!seed_demo_ready || bgt_key_just_pressed(BGT_KEY_R)) {
-                seed_demo_ready = true;
-
-                // 左列：每次都重新播种，再取 10 个数
-                bgt_random_seed(42);
-                for (int i = 0; i < 10; i++) {
-                    seeded_nums[i] = bgt_random(1, 100);
-                }
-
-                // 右列：不播种，直接延续全局序列取 10 个数
                 for (int i = 0; i < 10; i++) {
                     plain_nums[i] = bgt_random(1, 100);
                 }
-
-                // 顺手抽三个 [0.0, 1.0) 的随机小数
                 for (int i = 0; i < 3; i++) {
                     double_samples[i] = bgt_random(0.0, 1.0);
+                }
+            }
+
+            // 左列只在第一次进入时生成一次：固定种子 42 的结果永远
+            // 不变，重新生成也会一模一样。
+            if (!seed_demo_ready) {
+                seed_demo_ready = true;
+                bgt_random_seed(42);
+                for (int i = 0; i < 10; i++) {
+                    seeded_nums[i] = bgt_random(1, 100);
                 }
             }
 
@@ -364,8 +365,8 @@ int main()
                           "的种子，同样的序列。",
                           20);
             bgt_draw_text(40, 128,
-                          "左列每次生成前都重新 bgt_random_seed(42) —— 数字"
-                          "永远不变。",
+                          "左列用固定种子 42 生成：重开程序、按 R，都是这 "
+                          "10 个数。",
                           20);
             bgt_draw_text(40, 162,
                           "右列不播种，延续全局序列 —— 每次按 R 都不同。",
@@ -398,7 +399,7 @@ int main()
             bgt_set_color(BGT_BLACK);
             bgt_draw_text(40, 570, double_text, 18);
             bgt_set_color(BGT_DARK_GRAY);
-            bgt_draw_text(40, 605, "按【R】重新生成两列数字。", 18);
+            bgt_draw_text(40, 605, "按【R】重新生成右列与小数样例。", 18);
         }
 
         // 底部统一提示（板块 2 是深色背景，用浅色文字）
