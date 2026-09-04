@@ -130,6 +130,12 @@ endif()
 
 if(BGT_BUILD_TESTS)
     enable_testing()
+
+    add_executable(bgt_test_storage tests/test_storage.cpp)
+    target_link_libraries(bgt_test_storage PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_storage PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_storage COMMAND bgt_test_storage)
 endif()
 
 if(BGT_BUILD_VENDORED)

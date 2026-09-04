@@ -119,6 +119,7 @@
 #define BGT_ERROR_RENDERER 4
 #define BGT_ERROR_FONT 5
 #define BGT_ERROR_NOT_OPEN 6
+#define BGT_ERROR_STORAGE 8
 
 // 创建一个固定大小的图形窗口，并初始化 libbgt 内部需要的 SDL3 与
 // SDL3_ttf 资源。width 和 height 是窗口的逻辑绘图尺寸，title 是窗口标题，
@@ -313,6 +314,51 @@ double bgt_total_time();
 
 // 返回最近统计到的实际帧率。刚开始运行时可能为 0，因为还没有足够帧数用于统计。
 double bgt_fps();
+
+// 把存档文件读入内存存档表，之前内存表里的内容会被整体替换。存档文件是
+// 普通文本文件，每一行是“键=值”，并用 [节名] 行把键分组，可以用记事本
+// 直接打开查看或修改。filename 是文件名，通常写 "save.txt" 这样的相对
+// 路径。文件不存在时不会出错：内存表变为空表并返回 true，适合游戏第一
+// 次运行的情况。成功返回 true；文件存在但读不开、或里面有格式不对的行
+// 时返回 false 并记录错误（格式不对的行会被跳过，其他行照常读入）。
+bool bgt_load(const char filename[]);
+
+// 把内存存档表写入存档文件。之前用 bgt_set_int() 等函数放进表里的数据
+// 会一次性全部写入。库会先写一个临时文件、成功后再替换存档文件，避免
+// 写一半把旧存档弄坏。成功返回 true；失败返回 false 并记录错误。
+bool bgt_save(const char filename[]);
+
+// 判断文件是否存在。常用于判断是不是第一次运行，例如
+// if (!bgt_file_exists("save.txt")) { ... }。
+bool bgt_file_exists(const char filename[]);
+
+// 在内存存档表中写入一个整数。section 是节名，key 是键名，例如
+// bgt_set_int("最高分", "best", 100)。同一个 (节, 键) 已有值时会被覆盖。
+void bgt_set_int(const char section[], const char key[], int value);
+
+// 在内存存档表中写入一个小数，用法与 bgt_set_int() 相同。
+void bgt_set_double(const char section[], const char key[], double value);
+
+// 在内存存档表中写入一个字符串，value 可以直接写中文字符串字面量，例如
+// bgt_set_string("玩家", "name", "张三")。字符串首尾的空白会被去掉。
+void bgt_set_string(const char section[], const char key[], const char value[]);
+
+// 从内存存档表中读取一个整数。节或键不存在时返回 default_value，不会
+// 出错。键里存的值必须能按整数理解：如果存的是 45.5 这样的小数文本，
+// 就读不出来，返回 default_value 并记录错误。
+int bgt_get_int(const char section[], const char key[], int default_value);
+
+// 从内存存档表中读取一个小数。整数文本可以按小数读出（存 100 能读出
+// 100.0），反向不行。节或键不存在时返回 default_value，不会出错。
+double bgt_get_double(const char section[], const char key[],
+                      double default_value);
+
+// 从内存存档表中读取一个字符串，写进 out 数组。out_size 是 out 的大小，
+// 例如 char name[32]; bgt_get_string("玩家", "name", name, 32, "无名");
+// 节或键不存在时写入 default_value。字符串加结束符放不进 out_size 时，
+// 只写入放得下的部分（保证是完整的中文）并记录错误。
+void bgt_get_string(const char section[], const char key[],
+                    char out[], int out_size, const char default_value[]);
 
 // 判断库内部是否记录了错误。通常在某个返回 false 的函数之后调用。
 bool bgt_has_error();
