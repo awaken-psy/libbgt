@@ -118,6 +118,7 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_sudoku examples/06_sudoku.cpp)
     bgt_add_example(bgt_hanoi examples/07_hanoi.cpp)
     bgt_add_example(bgt_api_tour examples/08_api_tour.cpp)
+    bgt_add_example(bgt_storage examples/12_storage.cpp)
 
     add_custom_command(
         TARGET bgt_sudoku
