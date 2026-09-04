@@ -1779,7 +1779,8 @@ bool bgt_load(const char filename[])
     }
     std::ifstream file(filename, std::ios::in | std::ios::binary);
     if (!file) {
-        if (std::filesystem::exists(filename)) {
+        std::error_code probe_error;
+        if (std::filesystem::exists(filename, probe_error)) {
             s.set_error(BGT_ERROR_STORAGE,
                         "failed to open storage file " +
                             std::string(filename));

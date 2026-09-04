@@ -340,7 +340,8 @@ void bgt_set_int(const char section[], const char key[], int value);
 void bgt_set_double(const char section[], const char key[], double value);
 
 // 在内存存档表中写入一个字符串，value 可以直接写中文字符串字面量，例如
-// bgt_set_string("玩家", "name", "张三")。字符串首尾的空白会被去掉。
+// bgt_set_string("玩家", "name", "张三")。字符串首尾的空白会被去掉；
+// 去掉首尾空白后仍含换行的字符串会记录错误、不存入。
 void bgt_set_string(const char section[], const char key[], const char value[]);
 
 // 从内存存档表中读取一个整数。节或键不存在时返回 default_value，不会
