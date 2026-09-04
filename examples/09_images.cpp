@@ -2,7 +2,7 @@
 // libbgt 图片 API 演示 —— 严格 RST 变换模型（v0.2）
 //
 // 每个板块介绍一小块图片 API，按【空格】进入下一板块，随时可以按
-// 【Esc】退出。图片变换遵循图形学经典 RST 模型（RST = 平移-旋转-缩放）：
+// 【Esc】退出。图片变换遵循图形学经典 RST 模型：
 //
 //   M = T * R * S
 //
@@ -17,10 +17,6 @@
 //   板块 6  T — 平移
 //   板块 7  RST 组合与清除
 //   板块 8  错误路径
-//
-// 写作约定（与 08_api_tour.cpp 一致）：
-//   - 不出现类、结构体、指针、std::string；
-//   - 常量用 const int 声明（本文件刻意不使用 constexpr）。
 // =====================================================================
 
 #include "bgt.h"
@@ -34,9 +30,9 @@
 int main()
 {
     // ---------- 常量 ----------
-    const int window_width = 1000;   // 窗口宽度
-    const int window_height = 700;   // 窗口高度
-    const int target_fps = 60;      // 帧率上限
+    const int window_width = 1000;
+    const int window_height = 700;
+    const int target_fps = 60;
 
     if (!bgt_open_window(window_width, window_height,
                          "libbgt 图片 API 演示")) {
@@ -48,9 +44,14 @@ int main()
     // ---------- 加载图片（在主循环外，只做一次）----------
     // 测试图 09_image.png 是 128x128 的四象限图：
     //   左上=不透明红   右上=半透明蓝   左下=完全透明   右下=绿色圆
-    //   中心有一个白色小圆点
     // 不对称的象限让我们能一眼看出翻转和旋转的方向。
-    const int img = bgt_load_image("09_image.png");
+    //
+    // 加载三份：img_a 始终保持恒等变换（作参考），
+    // img_b / img_c 在各板块中被重新设置变换状态。
+    // 同一文件多次加载得到独立编号——这正是"独立变换"需要的行为。
+    const int img_a = bgt_load_image("09_image.png");
+    const int img_b = bgt_load_image("09_image.png");
+    const int img_c = bgt_load_image("09_image.png");
 
     // ---------- 各板块需要的"跨帧状态"（就是普通变量）----------
 
@@ -75,7 +76,7 @@ int main()
         }
 
         // 加载失败时：所有板块都显示错误提示
-        if (img == BGT_IMAGE_NONE) {
+        if (img_a == BGT_IMAGE_NONE) {
             bgt_set_background(BGT_WHITE);
             bgt_set_color(BGT_RED);
             bgt_draw_text(40, 40, "图片加载失败：", 24);
@@ -112,20 +113,18 @@ int main()
             // 显示图片的原始尺寸
             char size_text[96];
             std::snprintf(size_text, sizeof(size_text),
-                          "bgt_image_width(%d) = %d    "
-                          "bgt_image_height(%d) = %d",
-                          img, bgt_image_width(img), img,
-                          bgt_image_height(img));
+                          "bgt_image_width = %d    bgt_image_height = %d",
+                          bgt_image_width(img_a), bgt_image_height(img_a));
             bgt_set_color(BGT_BLUE);
             bgt_draw_text(40, 260, size_text, 20);
 
             // 原样绘制（板块 2 详细讲）
-            bgt_draw_image(img, 80, 320);
+            bgt_draw_image(img_a, 80, 320);
             bgt_set_color(BGT_BLACK);
             bgt_draw_text(240, 320,
                           "这就是刚加载的图（bgt_draw_image 原样绘制）。", 18);
             bgt_draw_text(240, 350,
-                          "左上红色象限、右上半透明蓝、右下绿色圆、"
+                          "左上红色、右上半透明蓝、右下绿色圆、"
                           "左下完全透明。", 18);
 
         } else if (part == 2) {
@@ -148,9 +147,9 @@ int main()
                           20);
 
             // 画三个副本，展示 (x, y) 控制左上角位置
-            bgt_draw_image(img, 80, 220);
-            bgt_draw_image(img, 300, 220);
-            bgt_draw_image(img, 520, 220);
+            bgt_draw_image(img_a, 80, 220);
+            bgt_draw_image(img_a, 300, 220);
+            bgt_draw_image(img_a, 520, 220);
 
             // 用十字标记中间那张图的左上角 = 局部原点
             bgt_set_color(BGT_RED);
@@ -186,35 +185,30 @@ int main()
                           "缩放围绕局部原点（左上角）——左上角不动，"
                           "图片向右下伸缩。", 20);
 
-            // 每帧设置缩放并绘制（设置一次持续生效，但这里为了对比
-            // 三种倍率，用同一个编号轮流改也行——缩放是图片的属性，
-            // 改了就影响后续所有 bgt_draw_image）
-            //
-            // 想同时画三种倍率？那就加载三次得到三个编号！
-            // 这就是"同一文件多次加载得到独立编号"的用处。
-            const int img_small = bgt_load_image("09_image.png");
-            const int img_big = bgt_load_image("09_image.png");
-            bgt_scale_image(img_small, 0.5, 0.5);
-            bgt_scale_image(img_big, 2.0, 2.0);
+            // img_a 恒等变换 → 原始大小
+            // img_b 缩小 0.5 倍
+            // img_c 放大 2.0 倍
+            bgt_scale_image(img_b, 0.5, 0.5);
+            bgt_scale_image(img_c, 2.0, 2.0);
 
-            // 三张图并排：缩小、原始、放大
-            bgt_draw_image(img, 80, 220);            // img: 原始 (scale=1.0)
-            bgt_draw_image(img_small, 280, 220);     // 0.5 倍
-            bgt_draw_image(img_big, 500, 220);       // 2.0 倍 → 256x256
+            bgt_draw_image(img_a, 80, 220);            // 128x128
+            bgt_draw_image(img_b, 320, 220);            // 64x64
+            bgt_draw_image(img_c, 600, 220);            // 256x256
 
-            bgt_set_color(BGT_BLACK);
-            bgt_draw_text(80, 530, "scale(1.0, 1.0) = 原始", 18);
-            bgt_draw_text(240, 530, "scale(0.5, 0.5) = 缩小一半", 18);
-            bgt_draw_text(500, 530, "scale(2.0, 2.0) = 放大一倍", 18);
+            // 标签：分开足够远，不互相遮挡
+            bgt_draw_text(80, 510, "scale(1, 1)", 18);
+            bgt_draw_text(320, 510, "scale(0.5, 0.5)", 18);
+            bgt_draw_text(600, 510, "scale(2, 2)", 18);
 
-            bgt_draw_text(40, 580,
-                          "注意：三张图的左上角都在同一水平线上，"
-                          "但大小不同——因为缩放围绕左上角。", 18);
+            bgt_draw_text(40, 570,
+                          "注意：三张图的左上角都在同一水平线上"
+                          "（y = 220），但大小不同。", 18);
+            bgt_draw_text(40, 600,
+                          "这就是'缩放围绕左上角'的含义。", 18);
 
-            // 清理多加载的两个编号（关窗时也会自动释放，这里只是为了
-            // 让后面的板块不受影响——实际上后面的板块每次都重新设置
-            // 变换状态，所以不清也没关系。但养成好习惯：不用的图片让
-            // 程序结束时自动回收即可。）
+            // 板块结束时恢复 img_b / img_c 的变换（不影响后面的板块）
+            bgt_scale_image(img_b, 1.0, 1.0);
+            bgt_scale_image(img_c, 1.0, 1.0);
 
         } else if (part == 4) {
             // =====================================================
@@ -236,40 +230,45 @@ int main()
                           "注意：翻转后图片翻到原点的另一侧！", 20);
             bgt_set_color(BGT_BLACK);
 
-            // 原始图
-            bgt_draw_image(img, 100, 220);
-            bgt_draw_text(100, 370, "原始 scale(1, 1)", 18);
+            // img_a：原始
+            bgt_draw_image(img_a, 80, 220);
+            bgt_draw_text(80, 370, "原始 scale(1, 1)", 18);
 
-            // 左右翻转：需要第二个编号，否则改的是同一张图
-            const int img_flip_h = bgt_load_image("09_image.png");
-            bgt_scale_image(img_flip_h, -1.0, 1.0);
-            bgt_draw_image(img_flip_h, 350, 220);
-            // 图片翻到 (350, 220) 的左侧！实际占据 (222, 220) 到 (350, 348)
-            bgt_set_color(BGT_RED);
-            bgt_draw_line(340, 220, 360, 220);
-            bgt_draw_line(350, 210, 350, 230);
-            bgt_set_color(BGT_BLACK);
-            bgt_draw_text(300, 370, "scale(-1, 1) 左右翻转", 18);
-            bgt_draw_text(300, 400, "（图片在十字的左侧）", 16);
+            // img_b：左右翻转。原点在 (450, 220)，图片翻到左侧
+            // 实际占据 x: 450-128=322 到 450（原图结束于 x=208，间隔 114px）
+            bgt_scale_image(img_b, -1.0, 1.0);
+            bgt_draw_image(img_b, 450, 220);
 
-            // 上下翻转：再来一个编号
-            const int img_flip_v = bgt_load_image("09_image.png");
-            bgt_scale_image(img_flip_v, 1.0, -1.0);
-            bgt_draw_image(img_flip_v, 600, 480);
-            // 图片翻到 (600, 480) 的上方！实际占据 (600, 352) 到 (728, 480)
+            // 标记翻转原点
             bgt_set_color(BGT_RED);
-            bgt_draw_line(590, 480, 610, 480);
-            bgt_draw_line(600, 470, 600, 490);
+            bgt_draw_line(440, 220, 460, 220);
+            bgt_draw_line(450, 210, 450, 230);
             bgt_set_color(BGT_BLACK);
-            bgt_draw_text(560, 500, "scale(1, -1) 上下翻转", 18);
-            bgt_draw_text(560, 530, "（图片在十字的上方）", 16);
+            bgt_draw_text(330, 370, "scale(-1, 1) 左右翻转", 18);
+            bgt_draw_text(330, 400, "（图片在十字的左侧）", 16);
+
+            // img_c：上下翻转。原点在 (700, 500)，图片翻到上方
+            // 实际占据 y: 500-128=372 到 500
+            bgt_scale_image(img_c, 1.0, -1.0);
+            bgt_draw_image(img_c, 700, 500);
+
+            bgt_set_color(BGT_RED);
+            bgt_draw_line(690, 500, 710, 500);
+            bgt_draw_line(700, 490, 700, 510);
+            bgt_set_color(BGT_BLACK);
+            bgt_draw_text(650, 520, "scale(1, -1) 上下翻转", 18);
+            bgt_draw_text(650, 550, "（图片在十字的上方）", 16);
 
             bgt_draw_text(40, 580,
-                          "红色十字标记局部原点的位置——翻转不改变原点坐标，",
+                          "红色十字标记局部原点——翻转不改变原点位置，",
                           18);
             bgt_draw_text(40, 610,
                           "只是图片的'身体'翻到了另一侧。这是严格 RST 的行为。",
                           18);
+
+            // 恢复变换
+            bgt_scale_image(img_b, 1.0, 1.0);
+            bgt_scale_image(img_c, 1.0, 1.0);
 
         } else if (part == 5) {
             // =====================================================
@@ -287,7 +286,7 @@ int main()
                           "旋转围绕图片的局部原点（左上角）——图片绕它转动。",
                           20);
             bgt_draw_text(40, 162,
-                          "按 ←/→ 调整角度，观察图片绕左上角的红色十字旋转。",
+                          "按 ←/→ 调整角度，观察图片绕红色十字旋转。",
                           20);
 
             // 交互：←/→ 改角度
@@ -298,13 +297,12 @@ int main()
                 demo_angle = demo_angle + 90.0 * bgt_delta_time();
             }
 
-            // 旋转中心的参考图（不旋转，作对比）
-            bgt_draw_image(img, 600, 220);
+            // img_a：参考图（不旋转）
+            bgt_draw_image(img_a, 600, 220);
 
-            // 旋转的图
-            bgt_rotate_image(img, demo_angle);
-            bgt_draw_image(img, 200, 220);
-            bgt_rotate_image(img, 0.0);   // 旋转回来，不影响后面的板块
+            // img_b：旋转的图
+            bgt_rotate_image(img_b, demo_angle);
+            bgt_draw_image(img_b, 200, 220);
 
             // 标记旋转中心（局部原点）
             bgt_set_color(BGT_RED);
@@ -315,18 +313,21 @@ int main()
             std::snprintf(angle_text, sizeof(angle_text),
                           "当前角度：%.0f 度", demo_angle);
             bgt_set_color(BGT_BLACK);
-            bgt_draw_text(200, 420, angle_text, 20);
+            bgt_draw_text(200, 430, angle_text, 20);
             bgt_draw_text(600, 370, "参考：未旋转", 18);
 
-            bgt_draw_text(40, 480,
+            bgt_draw_text(40, 490,
                           "看红色十字：旋转时左上角始终不动，图片绕它摆动。",
                           18);
-            bgt_draw_text(40, 510,
+            bgt_draw_text(40, 520,
                           "这就是严格 RST——旋转围绕局部原点(0, 0)，",
                           18);
-            bgt_draw_text(40, 540,
+            bgt_draw_text(40, 550,
                           "不是围绕图片中心。想围绕中心转是后续课程的话题。",
                           18);
+
+            // 恢复变换
+            bgt_rotate_image(img_b, 0.0);
 
         } else if (part == 6) {
             // =====================================================
@@ -352,13 +353,12 @@ int main()
             const double bounce = std::sin(bounce_t) * 20.0;
             const int bounce_offset = static_cast<int>(bounce);
 
-            // 有偏移的图
-            bgt_translate_image(img, 0, bounce_offset);
-            bgt_draw_image(img, 500, 320);
+            // img_b：有偏移的图（每帧更新偏移量）
+            bgt_translate_image(img_b, 0, bounce_offset);
+            bgt_draw_image(img_b, 500, 320);
 
-            // 无偏移的参考图（用另一个编号保持无偏移）
-            const int img_ref = bgt_load_image("09_image.png");
-            bgt_draw_image(img_ref, 200, 320);
+            // img_a：无偏移的参考图
+            bgt_draw_image(img_a, 200, 320);
 
             // 逻辑位置标记（十字 = 逻辑位置，图片在它上下浮动）
             bgt_set_color(BGT_RED);
@@ -367,7 +367,7 @@ int main()
             bgt_set_color(BGT_BLACK);
 
             bgt_draw_text(200, 470, "无偏移（参考）", 18);
-            bgt_draw_text(500, 470,
+            bgt_draw_text(430, 470,
                           "有偏移：红色十字是逻辑位置，图片在浮动", 18);
 
             char offset_text[64];
@@ -379,8 +379,8 @@ int main()
                           "偏移是图片的属性，设置一次持续生效直到改变。",
                           18);
 
-            // 恢复偏移，不影响后面的板块
-            bgt_translate_image(img, 0, 0);
+            // 恢复变换
+            bgt_translate_image(img_b, 0, 0);
 
         } else if (part == 7) {
             // =====================================================
@@ -399,25 +399,24 @@ int main()
             bgt_draw_text(40, 162,
                           "  M = T * R * S    （先 S 后 R 后 T）", 20);
 
-            // 左：原始图
-            bgt_draw_image(img, 100, 240);
+            // img_a：原始图
+            bgt_draw_image(img_a, 100, 240);
 
-            // 右：缩放 + 旋转 + 平移的组合
-            const int img_combo = bgt_load_image("09_image.png");
-            bgt_scale_image(img_combo, 1.5, 1.5);       // S：放大 1.5 倍
-            bgt_rotate_image(img_combo, 30.0);           // R：转 30 度
-            bgt_translate_image(img_combo, 50, 20);      // T：向右下偏移
-            bgt_draw_image(img_combo, 400, 240);
+            // img_b：缩放 + 旋转 + 平移的组合
+            bgt_scale_image(img_b, 1.5, 1.5);       // S：放大 1.5 倍
+            bgt_rotate_image(img_b, 30.0);           // R：转 30 度
+            bgt_translate_image(img_b, 50, 20);      // T：向右下偏移
+            bgt_draw_image(img_b, 400, 240);
 
             bgt_draw_text(100, 390, "原始", 18);
-            bgt_draw_text(400, 460, "scale(1.5, 1.5) + rotate(30) + "
+            bgt_draw_text(400, 460, "scale(1.5) + rotate(30) + "
                                     "translate(50, 20)", 16);
             bgt_draw_text(400, 490, "（先缩放，再绕左上角转，最后偏移）",
                           16);
 
-            // 清除后恢复原样
-            bgt_clear_image_transform(img_combo);
-            bgt_draw_image(img_combo, 750, 240);
+            // img_c：清除后恢复原样
+            bgt_clear_image_transform(img_c);
+            bgt_draw_image(img_c, 750, 240);
             bgt_draw_text(750, 390, "clear 后", 18);
 
             bgt_draw_text(40, 540,
@@ -428,6 +427,9 @@ int main()
                           18);
             bgt_draw_text(40, 600,
                           "图片回到刚加载时的样子。", 18);
+
+            // 恢复 img_b
+            bgt_clear_image_transform(img_b);
 
         } else {
             // =====================================================
@@ -442,7 +444,7 @@ int main()
                           "图片操作失败不会崩溃——会记录错误，"
                           "你可以看到它。", 20);
 
-            // 故意加载一个不存在的文件
+            // 故意加载一个不存在的文件（只加载一次，用 error_printed 控制）
             const int bad = bgt_load_image("this_file_does_not_exist.png");
 
             if (bad == BGT_IMAGE_NONE) {
@@ -450,33 +452,45 @@ int main()
                 bgt_draw_text(40, 150,
                               "加载不存在的文件 → 返回 BGT_IMAGE_NONE(0)：",
                               20);
-                bgt_draw_error(40, 190, 18);
+                bgt_draw_text(40, 190, "错误码可通过 bgt_error_code() 查看：", 18);
+                char code_text[64];
+                std::snprintf(code_text, sizeof(code_text),
+                              "  bgt_error_code() = %d（BGT_ERROR_IMAGE）",
+                              bgt_error_code());
+                bgt_draw_text(60, 220, code_text, 18);
+
+                // 完整错误信息打印到控制台（首次进入本板块时）
                 if (!error_printed) {
                     error_printed = true;
                     bgt_print_error();
                 }
+                bgt_set_color(BGT_DARK_GRAY);
+                bgt_draw_text(40, 260,
+                              "完整错误信息已用 bgt_print_error() 打印到控制台。",
+                              18);
             }
 
             // 故意用无效编号绘制
             bgt_set_color(BGT_BLACK);
-            bgt_draw_text(40, 250,
+            bgt_draw_text(40, 330,
                           "故意用编号 0（无效）绘制 → 记录错误，不崩溃：",
                           20);
             bgt_clear_error();
-            bgt_draw_image(BGT_IMAGE_NONE, 100, 300);
+            bgt_draw_image(BGT_IMAGE_NONE, 100, 380);
             if (bgt_has_error()) {
                 bgt_set_color(BGT_RED);
-                bgt_draw_error(40, 290, 18);
+                bgt_draw_text(40, 380, "bgt_has_error() 为 true", 18);
+                bgt_draw_text(40, 410, "（bgt_draw_error 的内容见控制台）", 16);
             }
 
             bgt_set_color(BGT_BLACK);
-            bgt_draw_text(40, 360,
+            bgt_draw_text(40, 480,
                           "用 bgt_clear_error() 清除后，bgt_has_error() "
                           "变回 false。", 20);
-            bgt_draw_text(40, 400,
+            bgt_draw_text(40, 520,
                           "常见 bug：加载失败没检查，画面一片空白——",
                           20);
-            bgt_draw_text(40, 430,
+            bgt_draw_text(40, 550,
                           "用 bgt_draw_error() 就能立刻看到原因。",
                           20);
 
