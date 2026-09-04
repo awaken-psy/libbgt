@@ -65,7 +65,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-默认把 `libbgt` 编译为静态库，并构建全部 8 个示例程序。
+默认把 `libbgt` 编译为静态库，并构建全部 12 个示例程序。
 
 ### 3. 运行示例
 
@@ -109,6 +109,7 @@ libbgt/
     design.md
     api-v0.md
     exercises.md
+    api-v0.3.md
   include/
     bgt.h
   src/
@@ -123,12 +124,15 @@ libbgt/
     06_sudoku_puzzle.txt
     07_hanoi.cpp
     08_api_tour.cpp
+    12_storage.cpp
+  tests/
+    test_storage.cpp
   third_party/
     SDL/
     SDL_ttf/
 ```
 
-当前仓库包含首版基础 API 实现、CMake 构建脚本和 8 个示例程序。文本绘制默认
+当前仓库包含首版基础 API 实现、CMake 构建脚本和 12 个示例程序。文本绘制默认
 使用系统自带的中文字体（Windows 下通常是微软雅黑），不依赖仓库内的字体文件；
 系统缺少中文字体时，可以用 `bgt_set_font()` 指定可用字体。
 
@@ -169,6 +173,7 @@ package/
 - [设计文档](docs/design.md)
 - [首版 API 文档](docs/api-v0.md)
 - [作业设计（汉诺塔主题）](docs/exercises.md)
+- [v0.3 文件存档 API 文档](docs/api-v0.3.md)
 
 ## 首版范围
 

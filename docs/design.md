@@ -524,3 +524,8 @@ libbgt/
 
 实现范围与 `docs/api-v0.md` 保持一致。文本绘制默认使用系统自带中文字体，
 不依赖仓库内的字体文件。
+
+v0.3 文件存档已实现：节-键-值文本存档接口 `bgt_load`/`bgt_save`/
+`bgt_file_exists` 与三类型读写 `bgt_set_*`/`bgt_get_*`（见
+`docs/api-v0.3.md`），存档为记事本可读可改的 INI 风格文本，配套显式
+检查测试（`BGT_BUILD_TESTS`）。
