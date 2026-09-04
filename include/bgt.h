@@ -249,14 +249,11 @@ void bgt_translate_image(int image_id, int dx, int dy);
 void bgt_rotate_image(int image_id, double angle);
 
 // S（缩放）：设置图片的缩放倍率。sx、sy 是缩放因子：
-//   1.0 = 原始大小    2.0 = 放大一倍    0.5 = 缩小一半
-//   负值表示翻转：sx < 0 左右翻转（图片翻到原点左侧），
-//               sy < 0 上下翻转（图片翻到原点上方）
 // 缩放围绕图片的局部原点（左上角）进行——缩放后左上角位置不变。
 // 默认 (1.0, 1.0)（原始大小）。image_id 无效时不修改并记录错误。
 void bgt_scale_image(int image_id, double sx, double sy);
 
-// 清除图片的全部变换状态，恢复为恒等变换：T(0, 0)、R(0 度)、S(1.0, 1.0)。
+// 清除图片的全部变换状态，恢复为恒等变换。
 // 清除后图片回到刚加载时的样子。image_id 无效时不修改并记录错误。
 void bgt_clear_image_transform(int image_id);
 
