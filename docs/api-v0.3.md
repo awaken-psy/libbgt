@@ -25,7 +25,7 @@ bgt_play_sound(jump);                    // 每次跳跃时触发
 bgt_play_music("bgm.wav");               // 进入主循环前起播
 ```
 
-支持的文件格式：WAV、MP3、OGG（由随仓库提供的 SDL_mixer 子模块解码，
+支持的文件格式：WAV、MP3、OGG 等常见格式（由随仓库提供的 SDL_mixer 子模块解码，
 默认静态链接进示例程序，运行时不需要附带 DLL）。
 
 ## 8. 声音函数清单
@@ -35,7 +35,7 @@ bgt_play_music("bgm.wav");               // 进入主循环前起播
 | `int bgt_load_sound(const char filename[])` | 加载音效，返回编号；失败返回 0 并记录错误 |
 | `void bgt_play_sound(int id)` | 播放一次；连按连响、自动混音；无效编号记错误 |
 | `void bgt_set_sound_volume(int id, int volume)` | 按 ID 设音量 0–100；影响之后的播放 |
-| `bool bgt_play_music(const char filename[])` | 起播（默认无限循环）；正在播放则自动切歌 |
+| `bool bgt_play_music(const char filename[])` | 起播（默认无限循环）；正在播放则自动切歌；成功返回 true，失败返回 false 并记录错误 |
 | `void bgt_stop_music()` | 停止；没有音乐在播时是安全空操作 |
 | `void bgt_set_music_volume(int volume)` | 音乐音量 0–100，立即生效 |
 

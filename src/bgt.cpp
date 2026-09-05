@@ -1575,16 +1575,13 @@ bool ensure_audio()
         return true;
     }
     if (!MIX_Init()) {
-        s.set_error(BGT_ERROR_AUDIO, std::string("failed to init SDL_mixer: ") +
-                                        SDL_GetError());
+        s.set_error(BGT_ERROR_AUDIO, "failed to init SDL_mixer");
         return false;
     }
     s.audio_mixer =
         MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
     if (s.audio_mixer == nullptr) {
-        s.set_error(BGT_ERROR_AUDIO,
-                    std::string("failed to open audio device: ") +
-                        SDL_GetError());
+        s.set_error(BGT_ERROR_AUDIO, "failed to open audio device");
         MIX_Quit();
         return false;
     }
@@ -1592,9 +1589,7 @@ bool ensure_audio()
     for (int i = 0; i < kMaxSoundTracks; ++i) {
         MIX_Track *track = MIX_CreateTrack(s.audio_mixer);
         if (track == nullptr) {
-            s.set_error(BGT_ERROR_AUDIO,
-                        std::string("failed to create sound track: ") +
-                            SDL_GetError());
+            s.set_error(BGT_ERROR_AUDIO, "failed to create sound track");
             for (MIX_Track *created : s.sound_tracks) {
                 MIX_DestroyTrack(created);
             }
@@ -1623,8 +1618,8 @@ int bgt_load_sound(const char filename[])
     }
     MIX_Audio *audio = MIX_LoadAudio(s.audio_mixer, filename, false);
     if (audio == nullptr) {
-        s.set_error(BGT_ERROR_AUDIO, std::string("failed to load sound ") +
-                                        filename + ": " + SDL_GetError());
+        s.set_error(BGT_ERROR_AUDIO,
+                    "failed to load sound " + std::string(filename));
         return 0;
     }
     const int id = s.next_sound_id;
@@ -1661,8 +1656,7 @@ void bgt_play_sound(int id)
                           static_cast<float>(entry_it->second.volume) /
                               100.0f) ||
         !MIX_PlayTrack(track, 0)) {
-        s.set_error(BGT_ERROR_AUDIO,
-                    std::string("failed to play sound: ") + SDL_GetError());
+        s.set_error(BGT_ERROR_AUDIO, "failed to play sound");
     }
 }
 
@@ -1690,9 +1684,7 @@ bool bgt_play_music(const char filename[])
     if (s.music_track == nullptr) {
         s.music_track = MIX_CreateTrack(s.audio_mixer);
         if (s.music_track == nullptr) {
-            s.set_error(BGT_ERROR_AUDIO,
-                        std::string("failed to create music track: ") +
-                            SDL_GetError());
+            s.set_error(BGT_ERROR_AUDIO, "failed to create music track");
             return false;
         }
     }
@@ -1700,13 +1692,13 @@ bool bgt_play_music(const char filename[])
     // closeio=true：换曲或销毁轨道时由 mixer 自动关闭旧文件。
     SDL_IOStream *io = SDL_IOFromFile(filename, "rb");
     if (io == nullptr) {
-        s.set_error(BGT_ERROR_AUDIO, std::string("failed to open music ") +
-                                        filename + ": " + SDL_GetError());
+        s.set_error(BGT_ERROR_AUDIO,
+                    "failed to open music " + std::string(filename));
         return false;
     }
     if (!MIX_SetTrackIOStream(s.music_track, io, true)) {
-        s.set_error(BGT_ERROR_AUDIO, std::string("failed to start music ") +
-                                        filename + ": " + SDL_GetError());
+        s.set_error(BGT_ERROR_AUDIO,
+                    "failed to start music " + std::string(filename));
         return false;
     }
     MIX_SetTrackGain(s.music_track,
@@ -1717,8 +1709,8 @@ bool bgt_play_music(const char filename[])
     const bool ok = MIX_PlayTrack(s.music_track, props);
     SDL_DestroyProperties(props);
     if (!ok) {
-        s.set_error(BGT_ERROR_AUDIO, std::string("failed to play music ") +
-                                        filename + ": " + SDL_GetError());
+        s.set_error(BGT_ERROR_AUDIO,
+                    "failed to play music " + std::string(filename));
         return false;
     }
     return true;

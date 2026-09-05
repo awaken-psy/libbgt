@@ -137,6 +137,8 @@ libbgt/
   third_party/
     SDL/
     SDL_ttf/
+    SDL_image/
+    SDL_mixer/
 ```
 
 当前仓库包含首版基础 API 实现、CMake 构建脚本和 13 个示例程序。文本绘制默认
