@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <SDL3_mixer/SDL_mixer.h>
 
 #include <algorithm>
 #include <array>
@@ -9,6 +10,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -35,6 +37,12 @@ struct FontEntry {
 struct Point {
     int x = 0;
     int y = 0;
+};
+
+// 一段已加载的音效：解码句柄 + 学生设置的音量（0-100）。
+struct SoundEntry {
+    MIX_Audio *audio = nullptr;
+    int volume = 100;
 };
 
 struct State {
@@ -72,6 +80,14 @@ struct State {
     int error_code = BGT_ERROR_NONE;
     std::string error_message;
 
+    // v0.3 声音：SDL_mixer 句柄、音效表与音乐单实例。
+    MIX_Mixer *audio_mixer = nullptr;   // 懒初始化，见 ensure_audio()
+    std::map<int, SoundEntry> sounds;   // 音效 ID → 数据
+    int next_sound_id = 1;              // 0 保留为“无效 ID”
+    std::vector<MIX_Track *> sound_tracks; // 音效轨道池（可重叠播放）
+    MIX_Track *music_track = nullptr;   // 背景音乐全局单实例
+    int music_volume = 100;             // 0-100；无实例时记忆
+
     ~State()
     {
         close();
@@ -95,6 +111,33 @@ struct State {
         }
     }
 
+    void close_sounds()
+    {
+        if (music_track != nullptr) {
+            MIX_DestroyTrack(music_track);
+            music_track = nullptr;
+        }
+        for (MIX_Track *track : sound_tracks) {
+            if (track != nullptr) {
+                MIX_DestroyTrack(track);
+            }
+        }
+        sound_tracks.clear();
+        for (auto &entry : sounds) {
+            if (entry.second.audio != nullptr) {
+                MIX_DestroyAudio(entry.second.audio);
+            }
+        }
+        sounds.clear();
+        next_sound_id = 1;
+        music_volume = 100;
+        if (audio_mixer != nullptr) {
+            MIX_DestroyMixer(audio_mixer);
+            audio_mixer = nullptr;
+            MIX_Quit();
+        }
+    }
+
     void close_fonts()
     {
         for (FontEntry &entry : fonts) {
@@ -113,6 +156,7 @@ struct State {
             canvas = nullptr;
         }
         close_fonts();
+        close_sounds();
         if (renderer != nullptr) {
             SDL_DestroyRenderer(renderer);
             renderer = nullptr;
@@ -1504,6 +1548,199 @@ double bgt_total_time()
 double bgt_fps()
 {
     return state().fps;
+}
+
+// ---------------------------------------------------------------------
+// 声音播放（v0.3）：SDL_mixer 封装。音效与背景音乐两类：
+// 音效预加载成 ID（内存驻留、可重叠并发），音乐全局单实例、流式、
+// 默认无限循环。第一次用声音时才打开音频设备（懒初始化）。
+// ---------------------------------------------------------------------
+namespace {
+
+// 同一时刻最多 32 个音效重叠（raylib 同款上限，远超教学场景需要）。
+constexpr int kMaxSoundTracks = 32;
+
+// 音量 0-100 收敛到边界（与 bgt_rgb 的 0-255 收敛同风格）。
+int clamp_volume(int volume)
+{
+    return std::clamp(volume, 0, 100);
+}
+
+// 懒初始化：第一次调用任何声音函数时打开音频设备。失败（比如没有
+// 声卡）时记录错误；程序不崩，之后的声音调用都做安全空操作。
+bool ensure_audio()
+{
+    State &s = state();
+    if (s.audio_mixer != nullptr) {
+        return true;
+    }
+    if (!MIX_Init()) {
+        s.set_error(BGT_ERROR_AUDIO, std::string("failed to init SDL_mixer: ") +
+                                        SDL_GetError());
+        return false;
+    }
+    s.audio_mixer =
+        MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
+    if (s.audio_mixer == nullptr) {
+        s.set_error(BGT_ERROR_AUDIO,
+                    std::string("failed to open audio device: ") +
+                        SDL_GetError());
+        MIX_Quit();
+        return false;
+    }
+    // 音效轨道池：一次性建好、反复复用（官方推荐的 track 用法）。
+    for (int i = 0; i < kMaxSoundTracks; ++i) {
+        MIX_Track *track = MIX_CreateTrack(s.audio_mixer);
+        if (track == nullptr) {
+            s.set_error(BGT_ERROR_AUDIO,
+                        std::string("failed to create sound track: ") +
+                            SDL_GetError());
+            for (MIX_Track *created : s.sound_tracks) {
+                MIX_DestroyTrack(created);
+            }
+            s.sound_tracks.clear();
+            MIX_DestroyMixer(s.audio_mixer);
+            s.audio_mixer = nullptr;
+            MIX_Quit();
+            return false;
+        }
+        s.sound_tracks.push_back(track);
+    }
+    return true;
+}
+
+} // namespace
+
+int bgt_load_sound(const char filename[])
+{
+    State &s = state();
+    if (filename == nullptr || filename[0] == '\0') {
+        s.set_error(BGT_ERROR_AUDIO, "sound filename is empty");
+        return 0;
+    }
+    if (!ensure_audio()) {
+        return 0;
+    }
+    MIX_Audio *audio = MIX_LoadAudio(s.audio_mixer, filename, false);
+    if (audio == nullptr) {
+        s.set_error(BGT_ERROR_AUDIO, std::string("failed to load sound ") +
+                                        filename + ": " + SDL_GetError());
+        return 0;
+    }
+    const int id = s.next_sound_id;
+    s.next_sound_id = s.next_sound_id + 1;
+    s.sounds[id].audio = audio;
+    s.sounds[id].volume = 100;
+    return id;
+}
+
+void bgt_play_sound(int id)
+{
+    State &s = state();
+    const auto entry_it = s.sounds.find(id);
+    if (entry_it == s.sounds.end()) {
+        s.set_error(BGT_ERROR_AUDIO, "invalid sound id");
+        return;
+    }
+    if (!ensure_audio()) {
+        return;
+    }
+    // 在轨道池里找一条没在响的；全忙时复用最老的一条（重新开始）。
+    MIX_Track *track = nullptr;
+    for (MIX_Track *candidate : s.sound_tracks) {
+        if (!MIX_TrackPlaying(candidate)) {
+            track = candidate;
+            break;
+        }
+    }
+    if (track == nullptr) {
+        track = s.sound_tracks.front();
+    }
+    if (!MIX_SetTrackAudio(track, entry_it->second.audio) ||
+        !MIX_SetTrackGain(track,
+                          static_cast<float>(entry_it->second.volume) /
+                              100.0f) ||
+        !MIX_PlayTrack(track, 0)) {
+        s.set_error(BGT_ERROR_AUDIO,
+                    std::string("failed to play sound: ") + SDL_GetError());
+    }
+}
+
+void bgt_set_sound_volume(int id, int volume)
+{
+    State &s = state();
+    const auto entry_it = s.sounds.find(id);
+    if (entry_it == s.sounds.end()) {
+        s.set_error(BGT_ERROR_AUDIO, "invalid sound id");
+        return;
+    }
+    entry_it->second.volume = clamp_volume(volume);
+}
+
+bool bgt_play_music(const char filename[])
+{
+    State &s = state();
+    if (filename == nullptr || filename[0] == '\0') {
+        s.set_error(BGT_ERROR_AUDIO, "music filename is empty");
+        return false;
+    }
+    if (!ensure_audio()) {
+        return false;
+    }
+    if (s.music_track == nullptr) {
+        s.music_track = MIX_CreateTrack(s.audio_mixer);
+        if (s.music_track == nullptr) {
+            s.set_error(BGT_ERROR_AUDIO,
+                        std::string("failed to create music track: ") +
+                            SDL_GetError());
+            return false;
+        }
+    }
+    // 流式：不把整个文件读进内存，边读边解码（内存占用与时长无关）。
+    // closeio=true：换曲或销毁轨道时由 mixer 自动关闭旧文件。
+    SDL_IOStream *io = SDL_IOFromFile(filename, "rb");
+    if (io == nullptr) {
+        s.set_error(BGT_ERROR_AUDIO, std::string("failed to open music ") +
+                                        filename + ": " + SDL_GetError());
+        return false;
+    }
+    if (!MIX_SetTrackIOStream(s.music_track, io, true)) {
+        s.set_error(BGT_ERROR_AUDIO, std::string("failed to start music ") +
+                                        filename + ": " + SDL_GetError());
+        return false;
+    }
+    MIX_SetTrackGain(s.music_track,
+                     static_cast<float>(s.music_volume) / 100.0f);
+    // 无限循环（-1 的语义已在 Step 4 对照头文件注释确认）。
+    SDL_PropertiesID props = SDL_CreateProperties();
+    SDL_SetNumberProperty(props, MIX_PROP_PLAY_LOOPS_NUMBER, -1);
+    const bool ok = MIX_PlayTrack(s.music_track, props);
+    SDL_DestroyProperties(props);
+    if (!ok) {
+        s.set_error(BGT_ERROR_AUDIO, std::string("failed to play music ") +
+                                        filename + ": " + SDL_GetError());
+        return false;
+    }
+    return true;
+}
+
+void bgt_stop_music()
+{
+    State &s = state();
+    if (s.music_track == nullptr) {
+        return; // 从没播过音乐：什么都不做
+    }
+    MIX_StopTrack(s.music_track, 0);
+}
+
+void bgt_set_music_volume(int volume)
+{
+    State &s = state();
+    s.music_volume = clamp_volume(volume);
+    if (s.music_track != nullptr) {
+        MIX_SetTrackGain(s.music_track,
+                         static_cast<float>(s.music_volume) / 100.0f);
+    }
 }
 
 bool bgt_has_error()

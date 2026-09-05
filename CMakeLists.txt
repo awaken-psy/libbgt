@@ -155,6 +155,23 @@ endif()
 
 if(BGT_BUILD_TESTS)
     enable_testing()
+
+    add_executable(bgt_test_sound tests/test_sound.cpp)
+    target_link_libraries(bgt_test_sound PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_sound PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_sound COMMAND bgt_test_sound
+        WORKING_DIRECTORY $<TARGET_FILE_DIR:bgt_test_sound>)
+
+    foreach(sound_asset jump ding boom melody)
+        add_custom_command(
+            TARGET bgt_test_sound
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_CURRENT_SOURCE_DIR}/examples/13_${sound_asset}.wav"
+                    "$<TARGET_FILE_DIR:bgt_test_sound>/13_${sound_asset}.wav"
+            VERBATIM)
+    endforeach()
 endif()
 
 if(BGT_BUILD_VENDORED)

@@ -119,6 +119,7 @@
 #define BGT_ERROR_RENDERER 4
 #define BGT_ERROR_FONT 5
 #define BGT_ERROR_NOT_OPEN 6
+#define BGT_ERROR_AUDIO 9
 
 // 创建一个固定大小的图形窗口，并初始化 libbgt 内部需要的 SDL3 与
 // SDL3_ttf 资源。width 和 height 是窗口的逻辑绘图尺寸，title 是窗口标题，
@@ -313,6 +314,32 @@ double bgt_total_time();
 
 // 返回最近统计到的实际帧率。刚开始运行时可能为 0，因为还没有足够帧数用于统计。
 double bgt_fps();
+
+// 从文件加载一段音效（WAV/OGG/MP3 都可以），返回声音编号。编号大于 0 表示
+// 成功；加载失败返回 0 并记录错误，此时可以调用 bgt_print_error() 查看原因。
+// 音效会一直留在内存里，程序结束自动清理，不需要（也没有）释放函数。
+// 通常在程序开头把所有音效加载完，存进 int 变量备用。
+int bgt_load_sound(const char filename[]);
+
+// 播放一次编号对应的音效。连按连响：每次调用都是一次新的发声，多个音效
+// 会自动混音重叠。id 无效（0 或没加载过）时记录错误，不播放。
+void bgt_play_sound(int id);
+
+// 设置某个音效的音量，volume 取 0 到 100：0 静音，100 最大，超出范围的值
+// 会被收到边界。影响这个音效之后每次播放的音量；正在响的发声不会变。
+void bgt_set_sound_volume(int id, int volume);
+
+// 播放一段背景音乐（WAV/OGG/MP3 都可以），默认无限循环。整个程序同一时刻
+// 只有一首音乐：正在播放时再调用本函数会自动切到新曲子。音乐是流式播放的，
+// 内存占用和音乐文件长度无关。成功返回 true；文件不存在、格式不支持等
+// 失败返回 false 并记录错误。
+bool bgt_play_music(const char filename[]);
+
+// 停止背景音乐。没有音乐在播时调用它没有任何效果，也不报错。
+void bgt_stop_music();
+
+// 设置背景音乐的音量，0 到 100，规则与音效音量相同。立即生效。
+void bgt_set_music_volume(int volume);
 
 // 判断库内部是否记录了错误。通常在某个返回 false 的函数之后调用。
 bool bgt_has_error();
