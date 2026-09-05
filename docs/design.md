@@ -524,3 +524,9 @@ libbgt/
 
 实现范围与 `docs/api-v0.md` 保持一致。文本绘制默认使用系统自带中文字体，
 不依赖仓库内的字体文件。
+
+v0.3 声音播放已实现：音效（`bgt_load_sound`/`bgt_play_sound`/
+`bgt_set_sound_volume`，可多声重叠）与背景音乐（`bgt_play_music`/
+`bgt_stop_music`/`bgt_set_music_volume`，流式、默认循环）两类接口（见
+`docs/api-v0.3.md`），基于 SDL_mixer 3.x 子模块，配套显式检查测试
+（`BGT_BUILD_TESTS`）与代码合成的音频资产（`examples/make_sound_assets.py`）。
