@@ -32,10 +32,12 @@ endif()
 if(BGT_USE_SYSTEM_SDL)
     find_package(SDL3 CONFIG REQUIRED)
     find_package(SDL3_ttf CONFIG REQUIRED)
+    find_package(SDL3_mixer CONFIG REQUIRED)
 
-    if(NOT TARGET SDL3::SDL3-static OR NOT TARGET SDL3_ttf::SDL3_ttf-static)
+    if(NOT TARGET SDL3::SDL3-static OR NOT TARGET SDL3_ttf::SDL3_ttf-static
+       OR NOT TARGET SDL3_mixer::SDL3_mixer-static)
         message(FATAL_ERROR
-            "BGT_USE_SYSTEM_SDL requires SDL3 and SDL3_ttf packages with static targets")
+            "BGT_USE_SYSTEM_SDL requires SDL3, SDL3_ttf and SDL3_mixer packages with static targets")
     endif()
 else()
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
@@ -43,6 +45,9 @@ else()
     endif()
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL_ttf/CMakeLists.txt")
         message(FATAL_ERROR "third_party/SDL_ttf is missing. Run: git submodule update --init --recursive")
+    endif()
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL_mixer/CMakeLists.txt")
+        message(FATAL_ERROR "third_party/SDL_mixer is missing. Run: git submodule update --init --recursive")
     endif()
 
     # Build the bundled dependencies only as static libraries. Besides making the
@@ -54,10 +59,27 @@ else()
     set(SDLTTF_SAMPLES OFF CACHE BOOL "" FORCE)
     set(SDLTTF_TESTS OFF CACHE BOOL "" FORCE)
     set(SDLTTF_VENDORED ON CACHE BOOL "" FORCE)
+
+    # SDL_mixer：只保留内置单文件解码器（WAV / dr_mp3 / drflac /
+    # stb_vorbis），关闭所有带嵌套子模块的解码器——零递归依赖。
+    set(SDLMIXER_VENDORED ON CACHE BOOL "" FORCE)
+    set(SDLMIXER_TESTS OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_DEPS_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_MIDI OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_MOD OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_GME OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_OPUS OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_WAVPACK OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_FLAC_LIBFLAC OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_VORBIS_VORBISFILE OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_VORBIS_TREMOR OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_MP3_MPG123 OFF CACHE BOOL "" FORCE)
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
     add_subdirectory(third_party/SDL SYSTEM EXCLUDE_FROM_ALL)
     add_subdirectory(third_party/SDL_ttf SYSTEM EXCLUDE_FROM_ALL)
+    add_subdirectory(third_party/SDL_mixer SYSTEM EXCLUDE_FROM_ALL)
 endif()
 
 add_library(bgt ${BGT_LIBRARY_TYPE} src/bgt.cpp)
@@ -71,10 +93,12 @@ target_include_directories(
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 if(BGT_BUILD_SHARED)
-    target_link_libraries(bgt PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
+    target_link_libraries(bgt PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static
+        SDL3_mixer::SDL3_mixer-static)
 else()
     target_compile_definitions(bgt PUBLIC BGT_STATIC_DEFINE)
-    target_link_libraries(bgt PUBLIC SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
+    target_link_libraries(bgt PUBLIC SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static
+        SDL3_mixer::SDL3_mixer-static)
 endif()
 
 set_target_properties(bgt PROPERTIES
@@ -90,7 +114,8 @@ if(BGT_BUILD_VENDORED)
                 "$<TARGET_FILE:bgt>"
                 "$<TARGET_FILE:SDL3-static>"
                 "$<TARGET_FILE:SDL3_ttf-static>"
-        DEPENDS bgt SDL3-static SDL3_ttf-static
+                "$<TARGET_FILE:SDL3_mixer-static>"
+        DEPENDS bgt SDL3-static SDL3_ttf-static SDL3_mixer-static
         COMMENT "Merging libbgt and vendored dependencies"
         VERBATIM)
     add_custom_target(bgt_vendored ALL DEPENDS "${BGT_VENDORED_LIBRARY}")
