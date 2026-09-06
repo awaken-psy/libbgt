@@ -116,6 +116,9 @@ struct State {
             entry.message += ": ";
             entry.message += sdl_error;
         }
+        // SDL 错误消费掉就清：错误历史里连续两条错误时，下一条
+        // 不会再拼到这一条留下的陈旧 SDL 文本。
+        SDL_ClearError();
         errors.push_back(entry);
         if (static_cast<int>(errors.size()) > kMaxErrorHistory) {
             errors.pop_front();
