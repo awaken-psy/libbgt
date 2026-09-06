@@ -171,6 +171,12 @@ if(BGT_BUILD_TESTS)
     set_target_properties(bgt_test_collision PROPERTIES CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
     add_test(NAME bgt_test_collision COMMAND bgt_test_collision)
+
+    add_executable(bgt_test_errors tests/test_errors.cpp)
+    target_link_libraries(bgt_test_errors PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_errors PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_errors COMMAND bgt_test_errors)
 endif()
 
 if(BGT_BUILD_VENDORED)

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <deque>
 #include <random>
 #include <string>
 #include <vector>
@@ -50,6 +51,15 @@ struct ImageEntry {
     int offset_y = 0;         // T：相对绘制位置的纵向偏移
 };
 
+// 错误历史条目：错误码 + 完整消息（已拼好 SDL 原文后缀）。
+struct ErrorEntry {
+    int code = BGT_ERROR_NONE;
+    std::string message;
+};
+
+// 错误历史容量：超过后最老的条目被挤出。
+constexpr int kMaxErrorHistory = 10;
+
 struct State {
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
@@ -83,8 +93,7 @@ struct State {
     double delta_time = 0.0;
     double total_time = 0.0;
     double fps = 0.0;
-    int error_code = BGT_ERROR_NONE;
-    std::string error_message;
+    std::deque<ErrorEntry> errors; // 错误历史，最多 kMaxErrorHistory 条
 
     ~State()
     {
@@ -93,19 +102,23 @@ struct State {
 
     void clear_error()
     {
-        error_code = BGT_ERROR_NONE;
-        error_message.clear();
+        errors.clear();
         SDL_ClearError();
     }
 
     void set_error(int code, const std::string &message)
     {
-        error_code = code;
-        error_message = message;
+        ErrorEntry entry;
+        entry.code = code;
+        entry.message = message;
         const char *sdl_error = SDL_GetError();
         if (sdl_error != nullptr && sdl_error[0] != '\0') {
-            error_message += ": ";
-            error_message += sdl_error;
+            entry.message += ": ";
+            entry.message += sdl_error;
+        }
+        errors.push_back(entry);
+        if (static_cast<int>(errors.size()) > kMaxErrorHistory) {
+            errors.pop_front();
         }
     }
 
@@ -1839,33 +1852,97 @@ bool bgt_hit_circle_rect(int cx, int cy, int radius, int x, int y,
     return dx * dx + dy * dy < r * r;
 }
 
+// 把 text 的前 out_size - 1 个字节按 UTF-8 字符边界截断后复制进 out，
+// 保证不会切在多字节字符中间，并补上结束符。查询辅助，绝不记错误。
+// 命名避开平行分支的同名助手（合体时统一）。
+void utf8_prefix_copy(const std::string &text, char out[], int out_size)
+{
+    if (out == nullptr || out_size <= 0) {
+        return;
+    }
+    int limit = out_size - 1;
+    if (static_cast<int>(text.size()) < limit) {
+        limit = static_cast<int>(text.size());
+    }
+    // UTF-8 续字节形如 10xxxxxx：截断点落在字符中间就向前退到边界。
+    while (limit > 0 &&
+           (static_cast<unsigned char>(text[limit]) & 0xC0U) == 0x80U) {
+        limit = limit - 1;
+    }
+    for (int i = 0; i < limit; i = i + 1) {
+        out[i] = text[i];
+    }
+    out[limit] = '\0';
+}
+
 bool bgt_has_error()
 {
-    return state().error_code != BGT_ERROR_NONE;
+    return !state().errors.empty();
+}
+
+int bgt_error_count()
+{
+    return static_cast<int>(state().errors.size());
+}
+
+int bgt_error_code(int index)
+{
+    const State &s = state();
+    if (index < 0 || index >= static_cast<int>(s.errors.size())) {
+        return BGT_ERROR_NONE;
+    }
+    return s.errors[static_cast<std::size_t>(index)].code;
 }
 
 int bgt_error_code()
 {
-    return state().error_code;
+    return bgt_error_code(bgt_error_count() - 1);
+}
+
+void bgt_error_text(int index, char out[], int out_size)
+{
+    if (out == nullptr || out_size <= 0) {
+        return;
+    }
+    const State &s = state();
+    if (index < 0 || index >= static_cast<int>(s.errors.size())) {
+        out[0] = '\0';
+        return;
+    }
+    utf8_prefix_copy(
+        s.errors[static_cast<std::size_t>(index)].message, out, out_size);
+}
+
+void bgt_print_error(int index)
+{
+    const State &s = state();
+    if (index < 0 || index >= static_cast<int>(s.errors.size())) {
+        return;
+    }
+    std::fprintf(stderr, "libbgt error %d: %s\n",
+                 s.errors[static_cast<std::size_t>(index)].code,
+                 s.errors[static_cast<std::size_t>(index)].message.c_str());
 }
 
 void bgt_print_error()
 {
-    const State &s = state();
-    if (s.error_code == BGT_ERROR_NONE) {
+    bgt_print_error(bgt_error_count() - 1);
+}
+
+void bgt_draw_error(int x, int y, int size, int index)
+{
+    State &s = state();
+    if (index < 0 || index >= static_cast<int>(s.errors.size())) {
         return;
     }
-    std::fprintf(stderr, "libbgt error %d: %s\n", s.error_code,
-                 s.error_message.c_str());
+    draw_text_impl(
+        s, x, y,
+        s.errors[static_cast<std::size_t>(index)].message.c_str(), size);
 }
 
 void bgt_draw_error(int x, int y, int size)
 {
-    State &s = state();
-    if (s.error_code == BGT_ERROR_NONE || s.error_message.empty()) {
-        return;
-    }
-    draw_text_impl(s, x, y, s.error_message.c_str(), size);
+    bgt_draw_error(x, y, size, bgt_error_count() - 1);
 }
 
 void bgt_clear_error()

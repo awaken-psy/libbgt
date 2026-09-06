@@ -400,22 +400,47 @@ bool bgt_hit_circle_circle(int x1, int y1, int radius1, int x2, int y2,
 bool bgt_hit_circle_rect(int cx, int cy, int radius, int x, int y,
                          int width, int height);
 
-// 判断库内部是否记录了错误。通常在某个返回 false 的函数之后调用。
+// 判断库内部是否记录了错误（错误历史里有至少一条）。通常在某个返回
+// false 的函数之后调用。
 bool bgt_has_error();
 
-// 返回最近一次错误的错误码。错误码是 BGT_ERROR_* 常量；没有错误时返回
-// BGT_ERROR_NONE。
+// 返回错误历史中的条数。历史最多保留 10 条：更早的错误会被最老的挤出。
+// bgt_clear_error() 会清空全部历史。
+int bgt_error_count();
+
+// 按序号返回历史中某条错误的错误码：0 是最老的一条，
+// bgt_error_count() - 1 是最新的一条。错误码是 BGT_ERROR_* 常量。
+// 序号越界（含历史为空）时返回 BGT_ERROR_NONE（0），不会产生新错误。
+int bgt_error_code(int index);
+
+// 返回最新一条错误的错误码；历史为空时返回 BGT_ERROR_NONE。
+// 等价于 bgt_error_code(bgt_error_count() - 1)。
 int bgt_error_code();
 
-// 把最近一次错误信息打印到标准错误输出。这个函数主要用于调试和示例程序中的
-// 简单错误报告。
+// 按序号把历史中某条错误的消息文本复制进 out 数组：最多放 out_size - 1
+// 个字节加结束符，放不下时按 UTF-8 字符边界安全截断。序号越界时 out 得到
+// 空串。查询不产生新错误，截断也是静默的。
+void bgt_error_text(int index, char out[], int out_size);
+
+// 把历史中第 index 条错误打印到标准错误输出，格式与库的报告一致。
+// 序号越界时什么都不打印。
+void bgt_print_error(int index);
+
+// 把最新一条错误信息打印到标准错误输出。这个函数主要用于调试和示例
+// 程序中的简单错误报告。等价于 bgt_print_error(bgt_error_count() - 1)。
 void bgt_print_error();
 
-// 把最近一次错误信息绘制到窗口中。(x, y) 是文字左上角，size 是字号。绘制颜色
-// 使用当前绘图颜色。
+// 把历史中第 index 条错误绘制到窗口中。(x, y) 是文字左上角，size 是
+// 字号，绘制颜色使用当前绘图颜色。消息太长时会自动按窗口宽度换行，
+// 逐行向下画。序号越界时什么都不画。
+void bgt_draw_error(int x, int y, int size, int index);
+
+// 把最新一条错误信息绘制到窗口中。等价于
+// bgt_draw_error(x, y, size, bgt_error_count() - 1)。
 void bgt_draw_error(int x, int y, int size);
 
-// 清除最近一次错误码和错误信息。清除后 bgt_has_error() 会返回 false。
+// 清除全部错误历史。清除后 bgt_has_error() 返回 false、
+// bgt_error_count() 返回 0。
 void bgt_clear_error();
 
 // NOLINTEND(readability-magic-numbers, modernize-avoid-c-arrays,
