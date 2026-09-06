@@ -41,7 +41,7 @@ int main()
             }
             bgt_set_color(BGT_BLACK);
             bgt_draw_text(40, 36, "板块 1：错误列表 —— 最近的错误都在这里", 32);
-            char count_text[32] = {};
+            char count_text[64] = {};
             std::snprintf(count_text, sizeof(count_text),
                           "历史里有 %d 条错误（最多保留 10 条）",
                           bgt_error_count());
@@ -93,7 +93,7 @@ int main()
             bgt_draw_text(80, 300, latest, 22);
             bgt_set_color(BGT_DARK_GRAY);
             bgt_draw_text(80, 420,
-                          "回板块 1 按【E】/【F】多触发几条再来看统计。", 22);
+                          "上面的统计来自板块 1 里按【E】/【F】触发的错误。", 22);
         }
 
         // ---------- 板块 3：单条呈现与换行 ----------
