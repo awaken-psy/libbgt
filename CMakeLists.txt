@@ -32,10 +32,12 @@ endif()
 if(BGT_USE_SYSTEM_SDL)
     find_package(SDL3 CONFIG REQUIRED)
     find_package(SDL3_ttf CONFIG REQUIRED)
+    find_package(SDL3_image CONFIG REQUIRED)
 
-    if(NOT TARGET SDL3::SDL3-static OR NOT TARGET SDL3_ttf::SDL3_ttf-static)
+    if(NOT TARGET SDL3::SDL3-static OR NOT TARGET SDL3_ttf::SDL3_ttf-static
+       OR NOT TARGET SDL3_image::SDL3_image-static)
         message(FATAL_ERROR
-            "BGT_USE_SYSTEM_SDL requires SDL3 and SDL3_ttf packages with static targets")
+            "BGT_USE_SYSTEM_SDL requires SDL3, SDL3_ttf and SDL3_image packages with static targets")
     endif()
 else()
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
@@ -43,6 +45,9 @@ else()
     endif()
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL_ttf/CMakeLists.txt")
         message(FATAL_ERROR "third_party/SDL_ttf is missing. Run: git submodule update --init --recursive")
+    endif()
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL_image/CMakeLists.txt")
+        message(FATAL_ERROR "third_party/SDL_image is missing. Run: git submodule update --init --recursive")
     endif()
 
     # Build the bundled dependencies only as static libraries. Besides making the
@@ -54,10 +59,20 @@ else()
     set(SDLTTF_SAMPLES OFF CACHE BOOL "" FORCE)
     set(SDLTTF_TESTS OFF CACHE BOOL "" FORCE)
     set(SDLTTF_VENDORED ON CACHE BOOL "" FORCE)
+    set(SDLIMAGE_VENDORED ON CACHE BOOL "" FORCE)
+    set(SDLIMAGE_TESTS OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_SAMPLES OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_TIF OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_WEBP OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_AVIF OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_JXL OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_DEPS_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_PNG_SHARED OFF CACHE BOOL "" FORCE)
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
     add_subdirectory(third_party/SDL SYSTEM EXCLUDE_FROM_ALL)
     add_subdirectory(third_party/SDL_ttf SYSTEM EXCLUDE_FROM_ALL)
+    add_subdirectory(third_party/SDL_image SYSTEM EXCLUDE_FROM_ALL)
 endif()
 
 add_library(bgt ${BGT_LIBRARY_TYPE} src/bgt.cpp)
@@ -71,10 +86,12 @@ target_include_directories(
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 if(BGT_BUILD_SHARED)
-    target_link_libraries(bgt PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
+    target_link_libraries(bgt PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static
+        SDL3_image::SDL3_image-static)
 else()
     target_compile_definitions(bgt PUBLIC BGT_STATIC_DEFINE)
-    target_link_libraries(bgt PUBLIC SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static)
+    target_link_libraries(bgt PUBLIC SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static
+        SDL3_image::SDL3_image-static)
 endif()
 
 set_target_properties(bgt PROPERTIES
@@ -90,7 +107,8 @@ if(BGT_BUILD_VENDORED)
                 "$<TARGET_FILE:bgt>"
                 "$<TARGET_FILE:SDL3-static>"
                 "$<TARGET_FILE:SDL3_ttf-static>"
-        DEPENDS bgt SDL3-static SDL3_ttf-static
+                "$<TARGET_FILE:SDL3_image-static>"
+        DEPENDS bgt SDL3-static SDL3_ttf-static SDL3_image-static
         COMMENT "Merging libbgt and vendored dependencies"
         VERBATIM)
     add_custom_target(bgt_vendored ALL DEPENDS "${BGT_VENDORED_LIBRARY}")
@@ -118,6 +136,17 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_sudoku examples/06_sudoku.cpp)
     bgt_add_example(bgt_hanoi examples/07_hanoi.cpp)
     bgt_add_example(bgt_api_tour examples/08_api_tour.cpp)
+    bgt_add_example(bgt_images examples/09_images.cpp)
+    bgt_add_example(bgt_random examples/10_random.cpp)
+    bgt_add_example(bgt_collision examples/11_collision.cpp)
+
+    add_custom_command(
+        TARGET bgt_images
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/examples/09_image.png"
+                "$<TARGET_FILE_DIR:bgt_images>/09_image.png"
+        VERBATIM)
 
     add_custom_command(
         TARGET bgt_sudoku
@@ -130,6 +159,18 @@ endif()
 
 if(BGT_BUILD_TESTS)
     enable_testing()
+
+    add_executable(bgt_test_random tests/test_random.cpp)
+    target_link_libraries(bgt_test_random PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_random PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_random COMMAND bgt_test_random)
+
+    add_executable(bgt_test_collision tests/test_collision.cpp)
+    target_link_libraries(bgt_test_collision PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_collision PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_collision COMMAND bgt_test_collision)
 endif()
 
 if(BGT_BUILD_VENDORED)

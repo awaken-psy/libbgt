@@ -524,3 +524,11 @@ libbgt/
 
 实现范围与 `docs/api-v0.md` 保持一致。文本绘制默认使用系统自带中文字体，
 不依赖仓库内的字体文件。
+
+v0.2 图片子系统已实现：`third_party/SDL_image` submodule、图片加载/绘制/
+缩放/旋转/翻转 API（见 `docs/api-v0.2.md`）。v0.2 随机数已实现：统一
+入口 `bgt_random`（整数/小数重载，半开区间 [min, max)）与随机种子
+`bgt_random_seed`（见 `docs/api-v0.2.md`），配套最小显式检查测试
+（`BGT_BUILD_TESTS`）。v0.2 碰撞检测已实现：矩形、圆、点两两组合的
+五个 `bgt_hit_*` 纯几何函数（见 `docs/api-v0.2.md`），配套显式检查
+测试（`BGT_BUILD_TESTS`）。

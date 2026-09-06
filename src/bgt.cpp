@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <SDL3_image/SDL_image.h>
 
 #include <algorithm>
 #include <array>
@@ -9,6 +10,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -37,6 +39,17 @@ struct Point {
     int y = 0;
 };
 
+// 图片条目：纹理 + 严格 RST 变换状态（T 平移 / R 旋转 / S 缩放）。
+// 变换合成顺序固定为 M = T * R * S（先 S 后 R 后 T），全部围绕局部原点。
+struct ImageEntry {
+    SDL_Texture *texture = nullptr;
+    double rotation = 0.0;    // R：旋转角（度，顺时针）
+    double scale_x = 1.0;     // S：横向缩放因子（负值 = 左右翻转）
+    double scale_y = 1.0;     // S：纵向缩放因子（负值 = 上下翻转）
+    int offset_x = 0;         // T：相对绘制位置的横向偏移
+    int offset_y = 0;         // T：相对绘制位置的纵向偏移
+};
+
 struct State {
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
@@ -53,6 +66,7 @@ struct State {
     int fps_limit = 0;
     std::string font_path;
     std::vector<FontEntry> fonts;
+    std::vector<ImageEntry> images;     // 图片条目，编号 = 下标 + 1
     std::array<bool, kMaxPublicKey> keys{};
     std::array<bool, kMaxPublicKey> previous_keys{};
     std::array<bool, kMouseButtonCount> mouse_buttons{};
@@ -106,12 +120,24 @@ struct State {
         fonts.clear();
     }
 
+    void close_images()
+    {
+        for (ImageEntry &entry : images) {
+            if (entry.texture != nullptr) {
+                SDL_DestroyTexture(entry.texture);
+                entry.texture = nullptr;
+            }
+        }
+        images.clear();
+    }
+
     void close()
     {
         if (canvas != nullptr) {
             SDL_DestroyTexture(canvas);
             canvas = nullptr;
         }
+        close_images();
         close_fonts();
         if (renderer != nullptr) {
             SDL_DestroyRenderer(renderer);
@@ -147,6 +173,14 @@ State &state()
 {
     static State instance;
     return instance;
+}
+
+// 与窗口生命周期无关的随机数引擎；首次使用时用 random_device 自动播种，
+// 因此学生不调用 bgt_random_seed 也能得到每次运行都不同的随机序列。
+std::mt19937 &random_engine()
+{
+    static std::mt19937 engine{std::random_device{}()};
+    return engine;
 }
 
 int clamp_byte(int value)
@@ -199,6 +233,19 @@ bool ensure_open(State &s)
         return false;
     }
     return true;
+}
+
+// 图片编号从 1 开始；越界时返回 nullptr（bounds 契约，不记错误）。
+ImageEntry *get_image(State &s, int image_id)
+{
+    if (image_id <= 0) {
+        return nullptr;
+    }
+    const auto index = static_cast<std::size_t>(image_id - 1);
+    if (index >= s.images.size()) {
+        return nullptr;
+    }
+    return &s.images[index];
 }
 
 std::string join_path(const std::string &left, const std::string &right)
@@ -1333,6 +1380,187 @@ int bgt_get_line_width()
     return state().line_width;
 }
 
+int bgt_load_image(const char filename[])
+{
+    State &s = state();
+    if (!ensure_open(s)) {
+        return BGT_IMAGE_NONE;
+    }
+    if (filename == nullptr || filename[0] == '\0') {
+        s.set_error(BGT_ERROR_IMAGE, "image filename is empty");
+        return BGT_IMAGE_NONE;
+    }
+
+    SDL_Surface *surface = IMG_Load(filename);
+    if (surface == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE,
+                    std::string("failed to load image ") + filename);
+        return BGT_IMAGE_NONE;
+    }
+
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(s.renderer, surface);
+    SDL_DestroySurface(surface);
+    if (texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "failed to create image texture");
+        return BGT_IMAGE_NONE;
+    }
+
+    // 透明 PNG 与缩放采样质量：与 SSAA 画布的设置保持一致
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_LINEAR);
+
+    // 新图片的变换状态为恒等（T 0、R 0、S 1）
+    ImageEntry entry;
+    entry.texture = texture;
+    s.images.push_back(entry);
+    return static_cast<int>(s.images.size());
+}
+
+int bgt_image_width(int image_id)
+{
+    State &s = state();
+    const ImageEntry *entry = get_image(s, image_id);
+    if (entry == nullptr || entry->texture == nullptr) {
+        return 0;
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    if (!SDL_GetTextureSize(entry->texture, &width, &height)) {
+        return 0;
+    }
+    return static_cast<int>(std::lround(width));
+}
+
+int bgt_image_height(int image_id)
+{
+    State &s = state();
+    const ImageEntry *entry = get_image(s, image_id);
+    if (entry == nullptr || entry->texture == nullptr) {
+        return 0;
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    if (!SDL_GetTextureSize(entry->texture, &width, &height)) {
+        return 0;
+    }
+    return static_cast<int>(std::lround(height));
+}
+
+void bgt_translate_image(int image_id, int dx, int dy)
+{
+    State &s = state();
+    ImageEntry *entry = get_image(s, image_id);
+    if (entry == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    entry->offset_x = dx;
+    entry->offset_y = dy;
+}
+
+void bgt_rotate_image(int image_id, double angle)
+{
+    State &s = state();
+    ImageEntry *entry = get_image(s, image_id);
+    if (entry == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    entry->rotation = angle;
+}
+
+void bgt_scale_image(int image_id, double sx, double sy)
+{
+    State &s = state();
+    ImageEntry *entry = get_image(s, image_id);
+    if (entry == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    entry->scale_x = sx;
+    entry->scale_y = sy;
+}
+
+void bgt_clear_image_transform(int image_id)
+{
+    State &s = state();
+    ImageEntry *entry = get_image(s, image_id);
+    if (entry == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+    // 恒等变换：T(0,0)、R(0 度)、S(1.0, 1.0)
+    entry->offset_x = 0;
+    entry->offset_y = 0;
+    entry->rotation = 0.0;
+    entry->scale_x = 1.0;
+    entry->scale_y = 1.0;
+}
+
+void bgt_draw_image(int image_id, int x, int y)
+{
+    State &s = state();
+    if (!ensure_open(s)) {
+        return;
+    }
+    ImageEntry *entry = get_image(s, image_id);
+    if (entry == nullptr || entry->texture == nullptr) {
+        s.set_error(BGT_ERROR_IMAGE, "invalid image id");
+        return;
+    }
+
+    float texture_width = 0.0F;
+    float texture_height = 0.0F;
+    if (!SDL_GetTextureSize(entry->texture, &texture_width, &texture_height)) {
+        s.set_error(BGT_ERROR_IMAGE, "failed to query image size");
+        return;
+    }
+
+    // T：基准位置 (x, y) + 变换偏移 (dx, dy)
+    const float tx = static_cast<float>(x + entry->offset_x);
+    const float ty = static_cast<float>(y + entry->offset_y);
+
+    // 快路径：恒等变换（无旋转、无缩放）时直接贴图
+    if (entry->rotation == 0.0 && entry->scale_x == 1.0 && entry->scale_y == 1.0)
+    {
+        const SDL_FRect dst{tx, ty, texture_width, texture_height};
+        SDL_RenderTexture(s.renderer, entry->texture, nullptr, &dst);
+        return;
+    }
+
+    // 严格 RST：每个顶点独立走 local → S → R → T，
+    // 不做任何锚点补偿或翻转位置修正。
+    // 刻意不用 SDL_RenderTextureRotated 的 flip 参数（它把翻转放在旋转之后，
+    // 顺序是 T × flip × R × S，违反 RST 的 T × R × S(负值) 合成顺序）。
+    const double sx = entry->scale_x;
+    const double sy = entry->scale_y;
+    const double radians =
+        entry->rotation * 3.14159265358979323846 / 180.0;
+    const double cos_a = std::cos(radians);
+    const double sin_a = std::sin(radians);
+
+    const auto rst = [sx, sy, cos_a, sin_a, tx, ty](double lx, double ly) {
+        const double vx = lx * sx;                    // S（缩放，负值翻转）
+        const double vy = ly * sy;
+        const double rx = vx * cos_a - vy * sin_a;    // R（顺时针，屏幕坐标系）
+        const double ry = vx * sin_a + vy * cos_a;
+        return SDL_FPoint{static_cast<float>(rx + tx),   // T（平移）
+                          static_cast<float>(ry + ty)};
+    };
+
+    const double w = static_cast<double>(texture_width);
+    const double h = static_cast<double>(texture_height);
+
+    SDL_Vertex vertices[4] = {
+        {rst(0, 0), SDL_FColor{1.0F, 1.0F, 1.0F, 1.0F}, SDL_FPoint{0.0F, 0.0F}},
+        {rst(w, 0), SDL_FColor{1.0F, 1.0F, 1.0F, 1.0F}, SDL_FPoint{1.0F, 0.0F}},
+        {rst(w, h), SDL_FColor{1.0F, 1.0F, 1.0F, 1.0F}, SDL_FPoint{1.0F, 1.0F}},
+        {rst(0, h), SDL_FColor{1.0F, 1.0F, 1.0F, 1.0F}, SDL_FPoint{0.0F, 1.0F}},
+    };
+    const int indices[6] = {0, 1, 2, 0, 2, 3};
+    SDL_RenderGeometry(s.renderer, entry->texture, vertices, 4, indices, 6);
+}
+
 bool bgt_set_font(const char filename[], int size)
 {
     State &s = state();
@@ -1504,6 +1732,111 @@ double bgt_total_time()
 double bgt_fps()
 {
     return state().fps;
+}
+
+void bgt_random_seed(unsigned seed)
+{
+    random_engine().seed(seed);
+}
+
+int bgt_random(int min, int max)
+{
+    if (min > max) {
+        std::swap(min, max);
+    }
+    if (min >= max) {
+        return min;
+    }
+    return std::uniform_int_distribution<int>(min, max - 1)(random_engine());
+}
+
+double bgt_random(double min, double max)
+{
+    if (min > max) {
+        std::swap(min, max);
+    }
+    if (min >= max) {
+        return min;
+    }
+    return std::uniform_real_distribution<double>(min, max)(random_engine());
+}
+
+bool bgt_hit_point_rect(int px, int py, int x, int y, int width, int height)
+{
+    // 全部升为 long long：x + width 在坐标接近 INT_MAX 时不会溢出。
+    const long long right = static_cast<long long>(x) + width;
+    const long long bottom = static_cast<long long>(y) + height;
+    return px >= x && px < right && py >= y && py < bottom;
+}
+
+bool bgt_hit_point_circle(int px, int py, int x, int y, int radius)
+{
+    // 负半径平方后会变正，必须显式守卫。
+    if (radius <= 0) {
+        return false;
+    }
+    const long long dx = static_cast<long long>(px) - x;
+    const long long dy = static_cast<long long>(py) - y;
+    const long long r = radius;
+    return dx * dx + dy * dy <= r * r;
+}
+
+bool bgt_hit_rect_rect(int x1, int y1, int width1, int height1,
+                       int x2, int y2, int width2, int height2)
+{
+    // 显式守卫：空矩形被另一矩形"跨立"时严格不等式仍会成立，
+    // 必须先排除（与圆形函数的半径守卫同理）。
+    if (width1 <= 0 || height1 <= 0 || width2 <= 0 || height2 <= 0) {
+        return false;
+    }
+    // 严格不等式：恰好共享边/角时不成立，贴边自然不算命中。
+    const long long a_right = static_cast<long long>(x1) + width1;
+    const long long a_bottom = static_cast<long long>(y1) + height1;
+    const long long b_right = static_cast<long long>(x2) + width2;
+    const long long b_bottom = static_cast<long long>(y2) + height2;
+    return x1 < b_right && x2 < a_right && y1 < b_bottom && y2 < a_bottom;
+}
+
+bool bgt_hit_circle_circle(int x1, int y1, int radius1, int x2, int y2,
+                           int radius2)
+{
+    // 逐个守卫，不能用 radius1 + radius2 <= 0（5 与 -3 的和为 2，会漏过）。
+    if (radius1 <= 0 || radius2 <= 0) {
+        return false;
+    }
+    const long long dx = static_cast<long long>(x1) - x2;
+    const long long dy = static_cast<long long>(y1) - y2;
+    const long long sum = static_cast<long long>(radius1) + radius2;
+    return dx * dx + dy * dy < sum * sum;
+}
+
+bool bgt_hit_circle_rect(int cx, int cy, int radius, int x, int y,
+                         int width, int height)
+{
+    if (radius <= 0 || width <= 0 || height <= 0) {
+        return false;
+    }
+    // 把圆心"夹"进矩形，得到矩形上离圆心最近的点，再比较距离与半径。
+    const long long right = static_cast<long long>(x) + width;
+    const long long bottom = static_cast<long long>(y) + height;
+    long long nearest_x = cx;
+    long long nearest_y = cy;
+    if (nearest_x < x) {
+        nearest_x = x;
+    }
+    if (nearest_x > right) {
+        nearest_x = right;
+    }
+    if (nearest_y < y) {
+        nearest_y = y;
+    }
+    if (nearest_y > bottom) {
+        nearest_y = bottom;
+    }
+    const long long dx = cx - nearest_x;
+    const long long dy = cy - nearest_y;
+    const long long r = radius;
+    return dx * dx + dy * dy < r * r;
 }
 
 bool bgt_has_error()

@@ -65,7 +65,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-默认把 `libbgt` 编译为静态库，并构建全部 8 个示例程序。
+默认把 `libbgt` 编译为静态库，并构建全部 11 个示例程序。
 
 ### 3. 运行示例
 
@@ -92,6 +92,7 @@ cmake --build build
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
 | `BGT_BUILD_EXAMPLES` | `ON` | 编译示例程序 |
+| `BGT_BUILD_TESTS` | `OFF` | 编译纯函数测试（显式检查，用 ctest 运行） |
 | `BGT_BUILD_SHARED` | `OFF` | 编译为共享库（默认静态） |
 | `BGT_BUILD_VENDORED` | `OFF` | MSVC 下把库与依赖合并为单个 `bgt_vendored.lib`（见下文） |
 | `BGT_USE_SYSTEM_SDL` | `OFF` | 使用系统安装的 SDL3 / SDL3_ttf 包 |
@@ -109,6 +110,7 @@ libbgt/
     design.md
     api-v0.md
     exercises.md
+    api-v0.2.md
   include/
     bgt.h
   src/
@@ -123,24 +125,32 @@ libbgt/
     06_sudoku_puzzle.txt
     07_hanoi.cpp
     08_api_tour.cpp
+    09_images.cpp
+    09_image.png
+    10_random.cpp
+    11_collision.cpp
+  tests/
+    test_random.cpp
+    test_collision.cpp
   third_party/
     SDL/
     SDL_ttf/
+    SDL_image/
 ```
 
-当前仓库包含首版基础 API 实现、CMake 构建脚本和 8 个示例程序。文本绘制默认
+当前仓库包含首版基础 API 实现、CMake 构建脚本和 11 个示例程序。文本绘制默认
 使用系统自带的中文字体（Windows 下通常是微软雅黑），不依赖仓库内的字体文件；
 系统缺少中文字体时，可以用 `bgt_set_font()` 指定可用字体。
 
 ## 依赖管理
 
-SDL3 与 SDL3_ttf 通过 Git Submodule 管理，使用者克隆后初始化子模块即可（命令
-见[快速开始](#快速开始)）。
+SDL3、SDL3_ttf 与 SDL3_image 通过 Git Submodule 管理，使用者克隆后初始化
+子模块即可（命令见[快速开始](#快速开始)）。
 
 ## MSVC 二进制分发
 
-面向 Visual Studio 使用者时，可以把 libbgt、SDL3、SDL3_ttf 及其字体栈的
-静态库合并为一个 `bgt_vendored.lib`。使用者不需要复制或链接 SDL DLL：
+面向 Visual Studio 使用者时，可以把 libbgt、SDL3、SDL3_ttf、SDL3_image 及其
+依赖的静态库合并为一个 `bgt_vendored.lib`。使用者不需要复制或链接 SDL DLL：
 
 ```powershell
 cmake -S . -B build-dist -G "Visual Studio 18 2026" -A x64 `
@@ -169,6 +179,7 @@ package/
 - [设计文档](docs/design.md)
 - [首版 API 文档](docs/api-v0.md)
 - [作业设计（汉诺塔主题）](docs/exercises.md)
+- [v0.2 API 文档（图片、随机数、碰撞检测）](docs/api-v0.2.md)
 
 ## 首版范围
 

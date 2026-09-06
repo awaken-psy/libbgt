@@ -112,6 +112,8 @@
 #define BGT_MOUSE_RIGHT 2
 #define BGT_MOUSE_MIDDLE 3
 
+#define BGT_IMAGE_NONE 0
+
 #define BGT_ERROR_NONE 0
 #define BGT_ERROR_SDL 1
 #define BGT_ERROR_TTF 2
@@ -119,6 +121,7 @@
 #define BGT_ERROR_RENDERER 4
 #define BGT_ERROR_FONT 5
 #define BGT_ERROR_NOT_OPEN 6
+#define BGT_ERROR_IMAGE 7
 
 // 创建一个固定大小的图形窗口，并初始化 libbgt 内部需要的 SDL3 与
 // SDL3_ttf 资源。width 和 height 是窗口的逻辑绘图尺寸，title 是窗口标题，
@@ -223,6 +226,45 @@ void bgt_set_line_width(int width);
 // 返回当前线条宽度。
 int bgt_get_line_width();
 
+// 从文件加载一张图片，支持 PNG、JPG、BMP 等常见格式。filename 是按 UTF-8 解释的图片文件路径。
+// 加载成功返回一个大于 0 的图片编号，失败返回 BGT_IMAGE_NONE（0），此时可调用 bgt_print_error() 查看原因。
+// 请在主循环外加载图片：同一文件多次加载会得到多个互相独立的编号。
+// 图片由库统一管理，程序结束时自动释放；关闭窗口后所有编号失效，需要重新加载。
+int bgt_load_image(const char filename[]);
+
+// 返回图片的原始宽度，单位是像素。image_id 无效时返回 0。
+int bgt_image_width(int image_id);
+
+// 返回图片的原始高度，单位是像素。image_id 无效时返回 0。
+int bgt_image_height(int image_id);
+
+// T（平移）：设置图片相对绘制位置的偏移量。bgt_draw_image 的 (x, y) 加上
+// 这里的 (dx, dy) 得到最终的平移位置：图片的局部原点（左上角）会落在
+// (x + dx, y + dy)。默认 (0, 0)（无偏移）。image_id 无效时不修改并记录错误。
+void bgt_translate_image(int image_id, int dx, int dy);
+
+// R（旋转）：设置图片的旋转角度。angle 单位是度，正值表示顺时针。
+// 旋转围绕图片的局部原点（左上角）进行——旋转后左上角位置不变，
+// 图片整体绕它转动。默认 0（不旋转）。image_id 无效时不修改并记录错误。
+void bgt_rotate_image(int image_id, double angle);
+
+// S（缩放）：设置图片的缩放倍率。sx、sy 是缩放因子：
+// 缩放围绕图片的局部原点（左上角）进行——缩放后左上角位置不变。
+// 默认 (1.0, 1.0)（原始大小）。image_id 无效时不修改并记录错误。
+void bgt_scale_image(int image_id, double sx, double sy);
+
+// 清除图片的全部变换状态，恢复为恒等变换。
+// 清除后图片回到刚加载时的样子。image_id 无效时不修改并记录错误。
+void bgt_clear_image_transform(int image_id);
+
+// 在基准位置 (x, y) 绘制图片，应用该图当前的全部变换状态。
+// 变换的合成顺序为：先缩放（S），再旋转（R），最后平移（T），
+// 即 M = T(x + dx, y + dy) * R(angle) * S(sx, sy)。
+// 图片的局部原点（左上角）最终落在 (x + dx, y + dy)。
+// 图片自带的透明部分会正确地与背景混合；绘制图片不受 bgt_set_color()
+// 设置的当前颜色影响。image_id 无效时不绘制并记录错误。
+void bgt_draw_image(int image_id, int x, int y);
+
 // 设置后续文本绘制使用的字体文件和默认字号。filename 是字体文件路径，size 是
 // 默认字号。成功返回 true；失败返回 false。若不调用该函数，库会尝试使用系统
 // 自带的中文字体（Windows 下通常是微软雅黑）；找不到可用字体时文本绘制会失败
@@ -313,6 +355,50 @@ double bgt_total_time();
 
 // 返回最近统计到的实际帧率。刚开始运行时可能为 0，因为还没有足够帧数用于统计。
 double bgt_fps();
+
+// 设置随机数种子。设置相同种子后，程序接下来产生的随机数序列每次运行都完全
+// 相同，适合调试和课堂演示"可复现的随机"。不设置种子时，库会自动播种，因此
+// 每次运行得到的随机数都不同。通常不需要手动调用该函数。
+void bgt_random_seed(unsigned seed);
+
+// 返回一个 [min, max) 半开区间内的随机整数：包含 min、不包含 max。
+// 例如 bgt_random(0, 6) 可能得到 0~5，正好当长度为 6 的数组下标用；
+// 掷六面骰要写 bgt_random(1, 7)。min 大于 max 时会自动交换两者；
+// min 等于 max 时直接返回该值。
+int bgt_random(int min, int max);
+
+// 返回一个 [min, max) 半开区间内的随机浮点数：包含 min、不包含 max。
+// 想要小数时两个参数都要写小数：bgt_random(0.0, 1.0) 正确，
+// bgt_random(0, 1) 会调用整数版本。min 大于 max 时会自动交换两者；
+// min 等于 max 时直接返回该值。
+double bgt_random(double min, double max);
+
+// 判断点 (px, py) 是否在矩形上：x、y 是矩形左上角，width、height 是宽高。
+// 命中范围与 fill_rect 实际画出的像素完全一致——包含左、上边界，不包含
+// 右、下边界（即 x <= px < x + width）。width 或 height 小于等于 0 时矩形
+// 是"空的"，恒返回 false。
+bool bgt_hit_point_rect(int px, int py, int x, int y, int width, int height);
+
+// 判断点 (px, py) 是否在圆上：x、y 是圆心，radius 是半径。点到圆心的
+// 距离不超过 radius 就算命中（圆周上的点算）。radius 小于等于 0 时恒返回
+// false。
+bool bgt_hit_point_circle(int px, int py, int x, int y, int radius);
+
+// 判断两个矩形是否实际重叠。只有真实共有一部分面积才返回 true；
+// 恰好贴边、贴角不算。宽或高小于等于 0 的矩形是"空的"，恒返回 false。
+bool bgt_hit_rect_rect(int x1, int y1, int width1, int height1,
+                       int x2, int y2, int width2, int height2);
+
+// 判断两个圆是否实际重叠。只有真实重叠才返回 true；恰好相切不算。
+// radius1 或 radius2 小于等于 0 时恒返回 false。
+bool bgt_hit_circle_circle(int x1, int y1, int radius1, int x2, int y2,
+                           int radius2);
+
+// 判断圆与矩形是否实际重叠。(cx, cy) 是圆心，radius 是半径；
+// (x, y, width, height) 描述矩形。圆心在矩形内部（含边上）算命中；
+// 圆在矩形外侧恰好相切不算。radius 或宽、高小于等于 0 时恒返回 false。
+bool bgt_hit_circle_rect(int cx, int cy, int radius, int x, int y,
+                         int width, int height);
 
 // 判断库内部是否记录了错误。通常在某个返回 false 的函数之后调用。
 bool bgt_has_error();
