@@ -1878,8 +1878,10 @@ void utf8_prefix_copy(const std::string &text, char out[], int out_size)
 // 把一条错误消息按最大宽度逐行绘制：先用 TTF_MeasureString 量出本行
 // 能放下的字节数，再回退到本行范围内的最后一个空格（优先在空格断行），
 // 行内没有空格才在量出的边界硬断。UTF-8 多字节字符不会被切开。
+// 消息按值传入：循环内的绘制失败会记新错误，环形队列的 push/pop 可能
+// 使按引用传入的历史条目失效（index 0 且历史满时的悬空引用）。
 void draw_wrapped_error(State &s, int x, int y, int size,
-                        const std::string &message)
+                        std::string message)
 {
     const int max_width = s.width - x - 16;
     if (max_width <= 0) {
