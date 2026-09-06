@@ -55,7 +55,7 @@ v0.1 的基础接口见 [api-v0.md](api-v0.md)，v0.2 的图片、随机数与�
 
 ```cpp
 for (int i = 0; i < bgt_error_count(); i = i + 1) {
-    bgt_draw_error(40, 100 + i * 56, 16, i);
+    bgt_draw_error(40, 100 + i * 48, 16, i);
 }
 ```
 

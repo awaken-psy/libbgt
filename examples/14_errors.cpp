@@ -54,9 +54,10 @@ int main()
                 bgt_set_color(BGT_DARK_GRAY);
                 bgt_draw_text(40, y, label, 16);
                 bgt_set_color(BGT_BLACK);
-                // 每条留两行的高度：长消息换行也不会压到下一条。
+                // 每条留两行的高度：长消息换行也不会压到下一条，
+                // 满容量 10 条时也碰不到底部提示。
                 bgt_draw_error(70, y, 16, i);
-                y = y + 56;
+                y = y + 48;
             }
             bgt_set_color(BGT_DARK_GRAY);
             bgt_draw_text(40, 650,
@@ -84,13 +85,21 @@ int main()
                           "图片类错误 %d 条，字体类错误 %d 条", image_errors,
                           font_errors);
             bgt_draw_text(80, 150, stat_text, 26);
-            // 用 bgt_error_text(i) 把文本取进自己的数组，想怎么画就怎么画。
+            // bgt_error_text 把文本取进自己的数组：拿去统计、拼提示都行。
+            // 这里数一数取出来的文本有几个字节（学生刚学的数组循环）。
             char latest[128] = {};
             bgt_error_text(bgt_error_count() - 1, latest, 128);
-            bgt_draw_text(80, 260,
-                          "最新一条是我自己取出来画的：", 22);
+            int text_bytes = 0;
+            while (latest[text_bytes] != '\0') {
+                text_bytes = text_bytes + 1;
+            }
+            char taken[48] = {};
+            std::snprintf(taken, sizeof(taken),
+                          "文本已取进数组：共 %d 个字节", text_bytes);
+            bgt_draw_text(80, 260, taken, 22);
+            // 画长文本时让库按序号画：超宽自动换行，不用自己操心宽度。
             bgt_set_color(BGT_BLUE);
-            bgt_draw_text(80, 300, latest, 22);
+            bgt_draw_error(80, 300, 22, bgt_error_count() - 1);
             bgt_set_color(BGT_DARK_GRAY);
             bgt_draw_text(80, 420,
                           "上面的统计来自板块 1 里按【E】/【F】触发的错误。", 22);
@@ -106,7 +115,7 @@ int main()
                     "用来演示错误消息自动换行.png");
             }
             bgt_set_color(BGT_BLACK);
-            bgt_draw_text(40, 36, "板块 3：单条错误 —— 长消息自动换行", 32);
+            bgt_draw_text(40, 36, "板块 3：单条呈现 —— 长消息自动换行", 32);
             bgt_draw_text(80, 130,
                           "按【G】触发一条超长错误，再看下面：", 22);
             // 无参版 bgt_draw_error 画的就是最新一条，超宽自动分行。
