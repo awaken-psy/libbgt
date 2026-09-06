@@ -1875,6 +1875,55 @@ void utf8_prefix_copy(const std::string &text, char out[], int out_size)
     out[limit] = '\0';
 }
 
+// 把一条错误消息按最大宽度逐行绘制：先用 TTF_MeasureString 量出本行
+// 能放下的字节数，再回退到本行范围内的最后一个空格（优先在空格断行），
+// 行内没有空格才在量出的边界硬断。UTF-8 多字节字符不会被切开。
+void draw_wrapped_error(State &s, int x, int y, int size,
+                        const std::string &message)
+{
+    const int max_width = s.width - x - 16;
+    if (max_width <= 0) {
+        draw_text_impl(s, x, y, message.c_str(), size);
+        return;
+    }
+    TTF_Font *font = get_font(s, size);
+    if (font == nullptr) {
+        draw_text_impl(s, x, y, message.c_str(), size);
+        return;
+    }
+    const int line_height = size + size / 3;
+    std::size_t start = 0;
+    int line_y = y;
+    while (start < message.size()) {
+        const std::string rest = message.substr(start);
+        int measured_width = 0;
+        std::size_t measured_length = 0;
+        if (!TTF_MeasureString(font, rest.c_str(), rest.size(), max_width,
+                               &measured_width, &measured_length) ||
+            measured_length == 0) {
+            // 测量失败或一个字符都放不下：剩余部分当一行画，避免死循环。
+            draw_text_impl(s, x, line_y, rest.c_str(), size);
+            return;
+        }
+        std::size_t break_at = start + measured_length;
+        if (break_at < message.size()) {
+            // 本行放不下整条消息：优先在行内最后一个空格处断行。
+            const std::size_t space =
+                message.find_last_of(' ', break_at - 1);
+            if (space != std::string::npos && space > start) {
+                break_at = space;
+            }
+        }
+        const std::string line = message.substr(start, break_at - start);
+        draw_text_impl(s, x, line_y, line.c_str(), size);
+        line_y = line_y + line_height;
+        start = break_at;
+        while (start < message.size() && message[start] == ' ') {
+            start = start + 1; // 断行点后的空格不进下一行
+        }
+    }
+}
+
 bool bgt_has_error()
 {
     return !state().errors.empty();
@@ -1935,9 +1984,8 @@ void bgt_draw_error(int x, int y, int size, int index)
     if (index < 0 || index >= static_cast<int>(s.errors.size())) {
         return;
     }
-    draw_text_impl(
-        s, x, y,
-        s.errors[static_cast<std::size_t>(index)].message.c_str(), size);
+    draw_wrapped_error(s, x, y, size,
+                       s.errors[static_cast<std::size_t>(index)].message);
 }
 
 void bgt_draw_error(int x, int y, int size)
