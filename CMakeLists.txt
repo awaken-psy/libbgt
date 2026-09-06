@@ -139,6 +139,7 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_images examples/09_images.cpp)
     bgt_add_example(bgt_random examples/10_random.cpp)
     bgt_add_example(bgt_collision examples/11_collision.cpp)
+    bgt_add_example(bgt_errors examples/14_errors.cpp)
 
     add_custom_command(
         TARGET bgt_images
