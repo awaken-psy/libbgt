@@ -4,7 +4,7 @@
 // 【Esc】退出。存档文件 save.txt 就在程序旁边，是普通文本文件，可以
 // 用记事本打开查看；改完存档再回到程序里按【R】，改动立刻生效。
 //   板块 1  最高分 —— 关掉程序再重新运行，最高分还在
-//   板块 2  记事本透明度 —— 屏幕上看存档内容，手改后重读生效
+//   板块 2  存档内容 —— 屏幕上看存档文本，手改后重读生效
 //   板块 3  玩家名字 —— 字符串存取
 //   板块 4  数独盘面 —— 81 字符盘面一键存/读
 // =====================================================================
@@ -42,7 +42,9 @@ int main()
     char name[32] = {};
     bgt_get_string("玩家", "name", name, 32, "无名");
     char names[4][8] = {"张三", "李四", "王五", "小明"};
-    int name_index = 0;
+    // “无名”不在预设名单里：起始序号停在名单外，
+    // 第一次按【N】先轮到“张三”，不会跳过它。
+    int name_index = -1;
 
     // 板块 4：数独盘面（81 个字符，'.' 表示空格）
     // 没存过盘面时，get 的默认值就是当前屏幕上的盘面（原地保持）。
@@ -50,6 +52,16 @@ int main()
         "53..7....6..195....98....6.8...6...34..8.3..1"
         "7...2...6.6....28....419..5....8..79";
     bgt_get_string("盘面", "board", board, 82, board);
+    // 手改存档可能把盘面改短：结束符后面的格子补成“空”（.），
+    // 免得上一次盘面的残尾数字混进画面。
+    int board_end = 0;
+    while (board_end < 81 && board[board_end] != '\0') {
+        board_end = board_end + 1;
+    }
+    while (board_end < 81) {
+        board[board_end] = '.';
+        board_end = board_end + 1;
+    }
     int cursor_row = 0;
     int cursor_col = 0;
     char action_text[64] = "按方向键选格子，回车改数字";
@@ -92,6 +104,15 @@ int main()
                 best = bgt_get_int("最高分", "best", 0);
                 bgt_get_string("玩家", "name", name, 32, "无名");
                 bgt_get_string("盘面", "board", board, 82, board);
+                // 盘面同样补尾（见程序开头）
+                int board_end = 0;
+                while (board_end < 81 && board[board_end] != '\0') {
+                    board_end = board_end + 1;
+                }
+                while (board_end < 81) {
+                    board[board_end] = '.';
+                    board_end = board_end + 1;
+                }
             }
             bgt_set_color(BGT_BLACK);
             bgt_draw_text(40, 36, "板块 2：save.txt 的内容 —— 文本存档看得见", 32);
@@ -173,15 +194,32 @@ int main()
             }
             if (bgt_key_just_pressed(BGT_KEY_S)) {
                 bgt_set_string("盘面", "board", board);
-                bgt_save("save.txt");
-                std::snprintf(action_text, sizeof(action_text),
-                              "已存档：盘面写进了 save.txt");
+                if (bgt_save("save.txt")) {
+                    std::snprintf(action_text, sizeof(action_text),
+                                  "已存档：盘面写进了 save.txt");
+                } else {
+                    std::snprintf(action_text, sizeof(action_text),
+                                  "存档失败：save.txt 写不进去");
+                }
             }
             if (bgt_key_just_pressed(BGT_KEY_L)) {
-                bgt_load("save.txt");
-                bgt_get_string("盘面", "board", board, 82, board);
-                std::snprintf(action_text, sizeof(action_text),
-                              "已读档：从 save.txt 恢复盘面");
+                if (bgt_load("save.txt")) {
+                    bgt_get_string("盘面", "board", board, 82, board);
+                    // 盘面同样补尾（见程序开头）
+                    int board_end = 0;
+                    while (board_end < 81 && board[board_end] != '\0') {
+                        board_end = board_end + 1;
+                    }
+                    while (board_end < 81) {
+                        board[board_end] = '.';
+                        board_end = board_end + 1;
+                    }
+                    std::snprintf(action_text, sizeof(action_text),
+                                  "已读档：从 save.txt 恢复盘面");
+                } else {
+                    std::snprintf(action_text, sizeof(action_text),
+                                  "读档失败：save.txt 读不出来");
+                }
             }
             bgt_set_color(BGT_BLACK);
             bgt_draw_text(40, 36, "板块 4：数独盘面 —— 81 个字符一键存/读", 32);

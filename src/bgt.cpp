@@ -1880,9 +1880,14 @@ bool bgt_save(const char filename[])
             file << '\n';
         }
         file.flush();
+        // 显式 close 并检查：缓冲数据在 close 时才真正落盘，漏看会静默丢档。
+        file.close();
         if (!file) {
             s.set_error(BGT_ERROR_STORAGE,
                         "failed while writing storage file " + temp_name);
+            // 写坏的临时文件是残渣：删掉，不留 “*.tmp” 尾巴。
+            std::error_code cleanup_error;
+            std::filesystem::remove(temp_name, cleanup_error);
             return false;
         }
     }

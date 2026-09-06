@@ -5,6 +5,7 @@
 
 #include "bgt.h"
 
+#include <climits>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -139,7 +140,8 @@ int main()
     bgt_clear_error();
 
     // 8) 缺文件 load：返回 true、空表、无错误（第一次运行的常态）。
-    //    顺带验证：空表 save 产出 0 字节文件。
+    //    顺带验证：空表 save 产出 0 字节文件，0 字节文件再 load 同样
+    //    空表、无错误。
     constexpr const char *k_test_file = "bgt_test_storage.tmp";
     std::remove(k_test_file);
     std::remove((std::string(k_test_file) + ".tmp").c_str());
@@ -154,8 +156,13 @@ int main()
                             std::istreambuf_iterator<char>());
         BGT_CHECK(content.empty());
     }
+    bgt_clear_error();
+    BGT_CHECK(bgt_load(k_test_file)); // 0 字节文件 → 空表、无错
+    BGT_CHECK(!bgt_has_error());
+    BGT_CHECK(bgt_get_int("进度", "count", 0) == 0);
 
-    // 9) 整表往返：set → save → 改内存 → load → 逐键读回。
+    // 9) 整表往返：set → save → 改内存 → load → 逐键读回（含 int 极值
+    //    与含 = 的值）。
     //    先用一次“缺文件 load”把内存表清空，保证写盘内容可精确断言。
     std::remove(k_test_file);
     bgt_clear_error();
@@ -163,6 +170,9 @@ int main()
     bgt_set_int("最高分", "best", 321);
     bgt_set_double("进度", "time", 45.5);
     bgt_set_string("玩家", "name", "李四");
+    bgt_set_int("极限", "min", INT_MIN);
+    bgt_set_int("极限", "max", INT_MAX);
+    bgt_set_string("玩家", "等式", "1+1=2"); // 值里的 = 不会写坏存档
     BGT_CHECK(bgt_save(k_test_file));
     BGT_CHECK(bgt_file_exists(k_test_file));
     bgt_set_int("最高分", "best", -77); // 只改内存
@@ -172,15 +182,22 @@ int main()
     char who[16] = {};
     bgt_get_string("玩家", "name", who, 16, "?");
     BGT_CHECK(text_equals(who, "李四"));
+    BGT_CHECK(bgt_get_int("极限", "min", 0) == INT_MIN);
+    BGT_CHECK(bgt_get_int("极限", "max", 0) == INT_MAX);
+    char formula[16] = {};
+    bgt_get_string("玩家", "等式", formula, 16, "?");
+    BGT_CHECK(text_equals(formula, "1+1=2"));
 
     // 10) 写盘格式：节与节内键都按字典序（按 UTF-8 字节序），行尾 \n。
     {
         std::ifstream file(k_test_file, std::ios::binary);
         std::string content((std::istreambuf_iterator<char>(file)),
                             std::istreambuf_iterator<char>());
-        // 字节序：最高分(E6..) < 玩家(E7..) < 进度(E8..)
+        // 字节序：最高分(E6 9C..) < 极限(E6 9E..) < 玩家(E7..) < 进度(E8..)
         BGT_CHECK(content ==
-                  "[最高分]\nbest=321\n\n[玩家]\nname=李四\n\n"
+                  "[最高分]\nbest=321\n\n"
+                  "[极限]\nmax=2147483647\nmin=-2147483648\n\n"
+                  "[玩家]\nname=李四\n等式=1+1=2\n\n"
                   "[进度]\ntime=45.5\n\n");
     }
 
@@ -261,7 +278,8 @@ int main()
     BGT_CHECK(bgt_get_double("大数", "x", 0.0) == 5000000000.0);
     bgt_clear_error();
 
-    // 16) file_exists 两态；save 到不存在的目录会失败并记错。
+    // 16) file_exists 两态；save 到不存在的目录会失败并记错；
+    //     null / 空文件名直接失败并记错（file_exists 只返回 false）。
     std::remove(k_test_file);
     BGT_CHECK(!bgt_file_exists(k_test_file));
     bgt_set_int("临时", "x", 1);
@@ -272,6 +290,22 @@ int main()
     BGT_CHECK(bgt_has_error());
     bgt_clear_error();
     BGT_CHECK(bgt_load("不存在的目录/x.txt")); // 不存在 → 空表、无错
+    BGT_CHECK(!bgt_has_error());
+    bgt_clear_error();
+    BGT_CHECK(!bgt_load(nullptr));
+    BGT_CHECK(bgt_error_code() == BGT_ERROR_STORAGE);
+    bgt_clear_error();
+    BGT_CHECK(!bgt_load(""));
+    BGT_CHECK(bgt_error_code() == BGT_ERROR_STORAGE);
+    bgt_clear_error();
+    BGT_CHECK(!bgt_save(nullptr));
+    BGT_CHECK(bgt_error_code() == BGT_ERROR_STORAGE);
+    bgt_clear_error();
+    BGT_CHECK(!bgt_save(""));
+    BGT_CHECK(bgt_error_code() == BGT_ERROR_STORAGE);
+    bgt_clear_error();
+    BGT_CHECK(!bgt_file_exists(nullptr));
+    BGT_CHECK(!bgt_file_exists(""));
     BGT_CHECK(!bgt_has_error());
 
     // 17) 清理测试文件。
