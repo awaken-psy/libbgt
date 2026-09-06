@@ -86,10 +86,14 @@ int main()
             if (bgt_key_just_pressed(BGT_KEY_UP) && sound_volume < 100) {
                 sound_volume = sound_volume + 5;
                 bgt_set_sound_volume(jump, sound_volume);
+                bgt_set_sound_volume(ding, sound_volume);
+                bgt_set_sound_volume(boom, sound_volume);
             }
             if (bgt_key_just_pressed(BGT_KEY_DOWN) && sound_volume > 0) {
                 sound_volume = sound_volume - 5;
                 bgt_set_sound_volume(jump, sound_volume);
+                bgt_set_sound_volume(ding, sound_volume);
+                bgt_set_sound_volume(boom, sound_volume);
             }
             if (bgt_key_just_pressed(BGT_KEY_RIGHT) && music_volume < 100) {
                 music_volume = music_volume + 5;

@@ -1640,7 +1640,7 @@ void bgt_play_sound(int id)
     if (!ensure_audio()) {
         return;
     }
-    // 在轨道池里找一条没在响的；全忙时复用最老的一条（重新开始）。
+    // 在轨道池里找一条没在响的；全忙时复用池里最靠前的一条（重新开始）。
     MIX_Track *track = nullptr;
     for (MIX_Track *candidate : s.sound_tracks) {
         if (!MIX_TrackPlaying(candidate)) {
