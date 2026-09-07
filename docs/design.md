@@ -407,9 +407,10 @@ libbgt/
     03_text.cpp
     04_input.cpp
     05_transparency.cpp
+    08_api_tour.cpp
+  demo/
     06_sudoku.cpp
     07_hanoi.cpp
-    08_api_tour.cpp
   third_party/
     SDL/
     SDL_ttf/
@@ -417,18 +418,21 @@ libbgt/
 
 ## 14. 示例规划
 
-首批示例应当从低到高排列：
+首批程序按职责分两个目录：`examples/` 放功能示例（演示某一组 API 的用法），
+`demo/` 放完整游戏（自成一体的可玩程序）：
 
 ```text
-01_hello.cpp           窗口与第一个图形
-02_shapes.cpp          基本图形绘制
-03_text.cpp            文本与中文显示
-04_input.cpp           键盘与鼠标输入
-05_transparency.cpp    透明与颜色混合
-06_sudoku.cpp          综合小游戏（数独）
-07_hanoi.cpp           汉诺塔演示（三态流程 + 递归自动求解）
-08_api_tour.cpp        面向初学者的板块式 API 速查（可作课堂讲义直接分发）
+examples/01_hello.cpp           窗口与第一个图形
+examples/02_shapes.cpp          基本图形绘制
+examples/03_text.cpp             文本与中文显示
+examples/04_input.cpp            键盘与鼠标输入
+examples/05_transparency.cpp     透明与颜色混合
+demo/06_sudoku.cpp               综合小游戏（数独）
+demo/07_hanoi.cpp                汉诺塔演示（三态流程 + 递归自动求解）
+examples/08_api_tour.cpp        面向初学者的板块式 API 速查（可作课堂讲义直接分发）
 ```
+
+编号是全局槽位：文件移动目录时编号不变，文档与交叉引用稳定。
 
 示例原则：
 
@@ -523,7 +527,7 @@ libbgt/
 - `include/bgt.h`
 - `src/bgt.cpp`
 - `CMakeLists.txt`
-- `examples/` 下的 8 个示例（`01_hello.cpp` 到 `08_api_tour.cpp`）
+- `examples/` 与 `demo/` 下的 8 个首批程序（`01_hello.cpp` 到 `08_api_tour.cpp`，其中 06/07 现归 `demo/`）
 
 实现范围与 `docs/api-v0.md` 保持一致。文本绘制默认使用系统自带中文字体，
 不依赖仓库内的字体文件。

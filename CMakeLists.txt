@@ -158,8 +158,8 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_text examples/03_text.cpp)
     bgt_add_example(bgt_input examples/04_input.cpp)
     bgt_add_example(bgt_transparency examples/05_transparency.cpp)
-    bgt_add_example(bgt_sudoku examples/06_sudoku.cpp)
-    bgt_add_example(bgt_hanoi examples/07_hanoi.cpp)
+    bgt_add_example(bgt_sudoku demo/06_sudoku.cpp)
+    bgt_add_example(bgt_hanoi demo/07_hanoi.cpp)
     bgt_add_example(bgt_api_tour examples/08_api_tour.cpp)
     bgt_add_example(bgt_images examples/09_images.cpp)
     bgt_add_example(bgt_random examples/10_random.cpp)
@@ -190,7 +190,7 @@ if(BGT_BUILD_EXAMPLES)
         TARGET bgt_sudoku
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${CMAKE_CURRENT_SOURCE_DIR}/examples/06_sudoku_puzzle.txt"
+                "${CMAKE_CURRENT_SOURCE_DIR}/demo/06_sudoku_puzzle.txt"
                 "$<TARGET_FILE_DIR:bgt_sudoku>/06_sudoku_puzzle.txt"
         VERBATIM)
 endif()

@@ -188,7 +188,7 @@ void load_puzzle(SudokuState &s)
 {
     s.loaded_from_file =
         read_puzzle_from_file(s, "06_sudoku_puzzle.txt") ||
-        read_puzzle_from_file(s, "examples/06_sudoku_puzzle.txt");
+        read_puzzle_from_file(s, "demo/06_sudoku_puzzle.txt");
     if (s.loaded_from_file) {
         return;
     }
