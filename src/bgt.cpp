@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -63,6 +64,15 @@ struct SoundEntry {
     int volume = 100;
 };
 
+// 错误历史条目：错误码 + 完整消息（已拼好 SDL 原文后缀）。
+struct ErrorEntry {
+    int code = BGT_ERROR_NONE;
+    std::string message;
+};
+
+// 错误历史容量：超过后最老的条目被挤出。
+constexpr int kMaxErrorHistory = 10;
+
 struct State {
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
@@ -96,8 +106,6 @@ struct State {
     double delta_time = 0.0;
     double total_time = 0.0;
     double fps = 0.0;
-    int error_code = BGT_ERROR_NONE;
-    std::string error_message;
     // v0.3 存档表：节名 → 键名 → 值的文本形式。
     std::map<std::string, std::map<std::string, std::string>> storage;
 
@@ -108,6 +116,7 @@ struct State {
     std::vector<MIX_Track *> sound_tracks; // 音效轨道池（可重叠播放）
     MIX_Track *music_track = nullptr;   // 背景音乐全局单实例
     int music_volume = 100;             // 0-100；无实例时记忆
+    std::deque<ErrorEntry> errors; // 错误历史，最多 kMaxErrorHistory 条
 
     ~State()
     {
@@ -116,19 +125,26 @@ struct State {
 
     void clear_error()
     {
-        error_code = BGT_ERROR_NONE;
-        error_message.clear();
+        errors.clear();
         SDL_ClearError();
     }
 
     void set_error(int code, const std::string &message)
     {
-        error_code = code;
-        error_message = message;
+        ErrorEntry entry;
+        entry.code = code;
+        entry.message = message;
         const char *sdl_error = SDL_GetError();
         if (sdl_error != nullptr && sdl_error[0] != '\0') {
-            error_message += ": ";
-            error_message += sdl_error;
+            entry.message += ": ";
+            entry.message += sdl_error;
+        }
+        // SDL 错误消费掉就清：错误历史里连续两条错误时，下一条
+        // 不会再拼到这一条留下的陈旧 SDL 文本。
+        SDL_ClearError();
+        errors.push_back(entry);
+        if (static_cast<int>(errors.size()) > kMaxErrorHistory) {
+            errors.pop_front();
         }
     }
 
@@ -2475,33 +2491,152 @@ void bgt_set_music_volume(int volume)
     }
 }
 
+namespace {
+
+// 把 text 的前 out_size - 1 个字节按 UTF-8 字符边界截断后复制进 out，
+// 保证不会切在多字节字符中间，并补上结束符。查询辅助，绝不记错误。
+// 命名避开平行分支的同名助手（合体时统一）。
+void utf8_prefix_copy(const std::string &text, char out[], int out_size)
+{
+    if (out == nullptr || out_size <= 0) {
+        return;
+    }
+    int limit = out_size - 1;
+    if (static_cast<int>(text.size()) < limit) {
+        limit = static_cast<int>(text.size());
+    }
+    // UTF-8 续字节形如 10xxxxxx：截断点落在字符中间就向前退到边界。
+    while (limit > 0 &&
+           (static_cast<unsigned char>(text[limit]) & 0xC0U) == 0x80U) {
+        limit = limit - 1;
+    }
+    for (int i = 0; i < limit; i = i + 1) {
+        out[i] = text[i];
+    }
+    out[limit] = '\0';
+}
+
+// 把一条错误消息按最大宽度逐行绘制：先用 TTF_MeasureString 量出本行
+// 能放下的字节数，再回退到本行范围内的最后一个空格（优先在空格断行），
+// 行内没有空格才在量出的边界硬断。UTF-8 多字节字符不会被切开。
+// 消息按值传入：循环内的绘制失败会记新错误，环形队列的 push/pop 可能
+// 使按引用传入的历史条目失效（index 0 且历史满时的悬空引用）。
+void draw_wrapped_error(State &s, int x, int y, int size,
+                        std::string message)
+{
+    const int max_width = s.width - x - 16;
+    if (max_width <= 0) {
+        draw_text_impl(s, x, y, message.c_str(), size);
+        return;
+    }
+    TTF_Font *font = get_font(s, size);
+    if (font == nullptr) {
+        // 字体不可用：get_font 已经记录过错误，这里直接放弃绘制，
+        // 避免再走一遍绘制路径把同一条错误记第二次。
+        return;
+    }
+    const int line_height = size + size / 3;
+    std::size_t start = 0;
+    int line_y = y;
+    while (start < message.size()) {
+        const std::string rest = message.substr(start);
+        int measured_width = 0;
+        std::size_t measured_length = 0;
+        if (!TTF_MeasureString(font, rest.c_str(), rest.size(), max_width,
+                               &measured_width, &measured_length) ||
+            measured_length == 0) {
+            // 测量失败或一个字符都放不下：剩余部分当一行画，避免死循环。
+            draw_text_impl(s, x, line_y, rest.c_str(), size);
+            return;
+        }
+        std::size_t break_at = start + measured_length;
+        if (break_at < message.size()) {
+            // 本行放不下整条消息：优先在行内最后一个空格处断行。
+            const std::size_t space =
+                message.find_last_of(' ', break_at - 1);
+            if (space != std::string::npos && space > start) {
+                break_at = space;
+            }
+        }
+        const std::string line = message.substr(start, break_at - start);
+        draw_text_impl(s, x, line_y, line.c_str(), size);
+        line_y = line_y + line_height;
+        start = break_at;
+        while (start < message.size() && message[start] == ' ') {
+            start = start + 1; // 断行点后的空格不进下一行
+        }
+    }
+}
+
+} // namespace
+
 bool bgt_has_error()
 {
-    return state().error_code != BGT_ERROR_NONE;
+    return !state().errors.empty();
+}
+
+int bgt_error_count()
+{
+    return static_cast<int>(state().errors.size());
+}
+
+int bgt_error_code(int index)
+{
+    const State &s = state();
+    if (index < 0 || index >= static_cast<int>(s.errors.size())) {
+        return BGT_ERROR_NONE;
+    }
+    return s.errors[static_cast<std::size_t>(index)].code;
 }
 
 int bgt_error_code()
 {
-    return state().error_code;
+    return bgt_error_code(bgt_error_count() - 1);
+}
+
+void bgt_error_text(int index, char out[], int out_size)
+{
+    if (out == nullptr || out_size <= 0) {
+        return;
+    }
+    const State &s = state();
+    if (index < 0 || index >= static_cast<int>(s.errors.size())) {
+        out[0] = '\0';
+        return;
+    }
+    utf8_prefix_copy(
+        s.errors[static_cast<std::size_t>(index)].message, out, out_size);
+}
+
+void bgt_print_error(int index)
+{
+    const State &s = state();
+    if (index < 0 || index >= static_cast<int>(s.errors.size())) {
+        return;
+    }
+    std::fprintf(stderr, "libbgt error %d: %s\n",
+                 s.errors[static_cast<std::size_t>(index)].code,
+                 s.errors[static_cast<std::size_t>(index)].message.c_str());
 }
 
 void bgt_print_error()
 {
-    const State &s = state();
-    if (s.error_code == BGT_ERROR_NONE) {
+    bgt_print_error(bgt_error_count() - 1);
+}
+
+void bgt_draw_error(int x, int y, int size, int index)
+{
+    State &s = state();
+    if (index < 0 || index >= static_cast<int>(s.errors.size())) {
         return;
     }
-    std::fprintf(stderr, "libbgt error %d: %s\n", s.error_code,
-                 s.error_message.c_str());
+    draw_wrapped_error(s, x, y, size,
+                       s.errors[static_cast<std::size_t>(index)].message);
 }
 
 void bgt_draw_error(int x, int y, int size)
 {
-    State &s = state();
-    if (s.error_code == BGT_ERROR_NONE || s.error_message.empty()) {
-        return;
-    }
-    draw_text_impl(s, x, y, s.error_message.c_str(), size);
+    bgt_draw_error(x, y, size, bgt_error_count() - 1);
 }
 
 void bgt_clear_error()

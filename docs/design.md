@@ -377,6 +377,9 @@ BGT_USE_SYSTEM_SDL
 - 可通过 `bgt_print_error()` 将最近错误打印到控制台。
 - 可通过 `bgt_draw_error(x, y, size)` 将最近错误绘制到窗口里。
 - 可通过 `bgt_clear_error()` 清除错误状态。
+- v0.3 起错误保留最近 10 条历史：`bgt_error_count()` 数条数，
+  `bgt_error_code(index)` / `bgt_error_text(index, out, size)` 按序号查询
+  （0 最老）；无参形态等价于取最新一条。
 
 说明：
 
@@ -543,3 +546,9 @@ v0.3 声音播放已实现：音效（`bgt_load_sound`/`bgt_play_sound`/
 `bgt_stop_music`/`bgt_set_music_volume`，流式、默认循环）两类接口（见
 `docs/api-v0.3.md`），基于 SDL_mixer 3.x 子模块，配套显式检查测试
 （`BGT_BUILD_TESTS`）与代码合成的音频资产（`examples/make_sound_assets.py`）。
+
+v0.3 错误诊断已实现：错误保留最近 10 条历史（环形队列），按序号查询
+错误码与文本（`bgt_error_count` / `bgt_error_code(index)` /
+`bgt_error_text`），`bgt_draw_error` 支持按序号绘制并自动按窗口宽度
+换行；v0.1 的无参用法由薄转调层保持不变（见 `docs/api-v0.3.md`），
+配套显式检查测试（`BGT_BUILD_TESTS`）。

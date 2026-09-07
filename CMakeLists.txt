@@ -166,6 +166,7 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_collision examples/11_collision.cpp)
     bgt_add_example(bgt_storage examples/12_storage.cpp)
     bgt_add_example(bgt_sound examples/13_sound.cpp)
+    bgt_add_example(bgt_errors examples/14_errors.cpp)
 
     add_custom_command(
         TARGET bgt_images
@@ -231,6 +232,12 @@ if(BGT_BUILD_TESTS)
                     "$<TARGET_FILE_DIR:bgt_test_sound>/13_${sound_asset}.wav"
             VERBATIM)
     endforeach()
+
+    add_executable(bgt_test_errors tests/test_errors.cpp)
+    target_link_libraries(bgt_test_errors PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_errors PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_errors COMMAND bgt_test_errors)
 endif()
 
 if(BGT_BUILD_VENDORED)
