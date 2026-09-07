@@ -160,6 +160,7 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_transparency examples/05_transparency.cpp)
     bgt_add_example(bgt_sudoku demo/01_sudoku.cpp)
     bgt_add_example(bgt_hanoi demo/02_hanoi.cpp)
+    bgt_add_example(bgt_breakout demo/03_breakout.cpp)
     bgt_add_example(bgt_api_tour examples/06_api_tour.cpp)
     bgt_add_example(bgt_images examples/07_images.cpp)
     bgt_add_example(bgt_random examples/08_random.cpp)
@@ -183,6 +184,16 @@ if(BGT_BUILD_EXAMPLES)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                     "${CMAKE_CURRENT_SOURCE_DIR}/examples/11_${sound_asset}.wav"
                     "$<TARGET_FILE_DIR:bgt_sound>/11_${sound_asset}.wav"
+            VERBATIM)
+    endforeach()
+
+    foreach(breakout_asset bounce brick lose win)
+        add_custom_command(
+            TARGET bgt_breakout
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_CURRENT_SOURCE_DIR}/demo/03_${breakout_asset}.wav"
+                    "$<TARGET_FILE_DIR:bgt_breakout>/03_${breakout_asset}.wav"
             VERBATIM)
     endforeach()
 
