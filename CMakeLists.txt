@@ -162,6 +162,7 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_hanoi demo/02_hanoi.cpp)
     bgt_add_example(bgt_breakout demo/03_breakout.cpp)
     bgt_add_example(bgt_minesweeper demo/04_minesweeper.cpp)
+    bgt_add_example(bgt_shooter demo/05_shooter.cpp)
     bgt_add_example(bgt_api_tour examples/06_api_tour.cpp)
     bgt_add_example(bgt_images examples/07_images.cpp)
     bgt_add_example(bgt_random examples/08_random.cpp)
@@ -205,6 +206,26 @@ if(BGT_BUILD_EXAMPLES)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                     "${CMAKE_CURRENT_SOURCE_DIR}/demo/04_${minesweeper_asset}.wav"
                     "$<TARGET_FILE_DIR:bgt_minesweeper>/04_${minesweeper_asset}.wav"
+            VERBATIM)
+    endforeach()
+
+    foreach(shooter_asset shoot boom lose bgm)
+        add_custom_command(
+            TARGET bgt_shooter
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_CURRENT_SOURCE_DIR}/demo/05_${shooter_asset}.wav"
+                    "$<TARGET_FILE_DIR:bgt_shooter>/05_${shooter_asset}.wav"
+            VERBATIM)
+    endforeach()
+
+    foreach(shooter_image ship enemy)
+        add_custom_command(
+            TARGET bgt_shooter
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_CURRENT_SOURCE_DIR}/demo/05_${shooter_image}.png"
+                    "$<TARGET_FILE_DIR:bgt_shooter>/05_${shooter_image}.png"
             VERBATIM)
     endforeach()
 
