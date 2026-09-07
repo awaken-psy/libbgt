@@ -1,7 +1,7 @@
 // =====================================================================
 // libbgt 声音播放 API 演示（v0.3）
 // 每个板块演示声音的一组能力，按【空格】进入下一板块，随时可以按
-// 【Esc】退出。示例用到的 13_*.wav 都是用代码合成的（生成脚本
+// 【Esc】退出。示例用到的 11_*.wav 都是用代码合成的（生成脚本
 // make_sound_assets.py），程序开始时把音效加载好，存进 int 变量。
 //   板块 1  音效 —— 按 1/2/3 触发，连按可以听到多声重叠
 //   板块 2  音量台 —— 方向键分别调音效和音乐的音量
@@ -27,9 +27,9 @@ int main()
     bgt_set_background(BGT_WHITE);
 
     // ---------- 程序开头把音效都加载好，存进 int 变量 ----------
-    const int jump = bgt_load_sound("13_jump.wav");
-    const int ding = bgt_load_sound("13_ding.wav");
-    const int boom = bgt_load_sound("13_boom.wav");
+    const int jump = bgt_load_sound("11_jump.wav");
+    const int ding = bgt_load_sound("11_ding.wav");
+    const int boom = bgt_load_sound("11_boom.wav");
     if (jump == 0 || ding == 0 || boom == 0) {
         bgt_print_error();
     }
@@ -135,7 +135,7 @@ int main()
         if (part == 3) {
             bgt_set_window_title("libbgt 声音演示 - 板块 3：背景音乐");
             if (bgt_key_just_pressed(BGT_KEY_P)) {
-                if (bgt_play_music("13_melody.wav")) {
+                if (bgt_play_music("11_melody.wav")) {
                     music_started = true;
                 } else {
                     bgt_print_error();
@@ -148,7 +148,7 @@ int main()
             bgt_set_color(BGT_BLACK);
             bgt_draw_text(40, 36,
                           "板块 3：背景音乐 —— 流式播放、默认循环", 32);
-            bgt_draw_text(80, 160, "【P】播放 13_melody.wav    【S】停止", 26);
+            bgt_draw_text(80, 160, "【P】播放 11_melody.wav    【S】停止", 26);
             bgt_set_color(BGT_DARK_GRAY);
             if (music_started) {
                 bgt_draw_text(80, 260,

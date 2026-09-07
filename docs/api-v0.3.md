@@ -7,8 +7,8 @@
 
 v0.1 的基础接口见 [api-v0.md](api-v0.md)，v0.2 的图片、随机数与碰撞检测
 接口见 [api-v0.2.md](api-v0.2.md)。存档完整示例见
-`examples/12_storage.cpp`，声音完整示例见 `examples/13_sound.cpp`，错误
-诊断完整示例见 `examples/14_errors.cpp`。
+`examples/10_storage.cpp`，声音完整示例见 `examples/11_sound.cpp`，错误
+诊断完整示例见 `examples/12_errors.cpp`。
 
 ## 1. 存档模型：节-键-值
 
@@ -175,7 +175,7 @@ bgt_play_music("bgm.wav");               // 进入主循环前起播
 
 ## 9. 声音教学建议
 
-- **先听再说**：把 `13_jump.wav` 换成学生自己录的 wav（手机就能录），
+- **先听再说**：把 `11_jump.wav` 换成学生自己录的 wav（手机就能录），
   两行代码就能让程序发出“自己的声音”——正反馈立竿见影。
 - **音效与音乐分开讲**：先讲音效（编号、触发、重叠），再讲音乐（流式、
   循环、单实例）——两类的心智模型完全不同，混在一起讲容易乱。

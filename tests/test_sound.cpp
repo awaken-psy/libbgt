@@ -30,14 +30,14 @@ int main()
 {
     // 1) 加载仓库资产：ID 从 1 开始、依次递增；同文件重复加载给新 ID。
     bgt_clear_error();
-    const int jump = bgt_load_sound("13_jump.wav");
+    const int jump = bgt_load_sound("11_jump.wav");
     BGT_CHECK(jump > 0);
     BGT_CHECK(!bgt_has_error());
-    const int ding = bgt_load_sound("13_ding.wav");
+    const int ding = bgt_load_sound("11_ding.wav");
     BGT_CHECK(ding > jump);
-    const int boom = bgt_load_sound("13_boom.wav");
+    const int boom = bgt_load_sound("11_boom.wav");
     BGT_CHECK(boom > ding);
-    const int jump2 = bgt_load_sound("13_jump.wav");
+    const int jump2 = bgt_load_sound("11_jump.wav");
     BGT_CHECK(jump2 > boom);
 
     // 2) 失败路径：不存在的文件 / 空名 / null → 0 + BGT_ERROR_AUDIO。
@@ -70,7 +70,7 @@ int main()
     bgt_clear_error();
 
     // 5) 音乐两态：起播成功；坏文件失败 + 记错；停止是安全空操作。
-    BGT_CHECK(bgt_play_music("13_melody.wav"));
+    BGT_CHECK(bgt_play_music("11_melody.wav"));
     BGT_CHECK(!bgt_has_error());
     bgt_set_music_volume(40);
     BGT_CHECK(!bgt_has_error());

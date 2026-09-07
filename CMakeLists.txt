@@ -158,22 +158,22 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_text examples/03_text.cpp)
     bgt_add_example(bgt_input examples/04_input.cpp)
     bgt_add_example(bgt_transparency examples/05_transparency.cpp)
-    bgt_add_example(bgt_sudoku demo/06_sudoku.cpp)
-    bgt_add_example(bgt_hanoi demo/07_hanoi.cpp)
-    bgt_add_example(bgt_api_tour examples/08_api_tour.cpp)
-    bgt_add_example(bgt_images examples/09_images.cpp)
-    bgt_add_example(bgt_random examples/10_random.cpp)
-    bgt_add_example(bgt_collision examples/11_collision.cpp)
-    bgt_add_example(bgt_storage examples/12_storage.cpp)
-    bgt_add_example(bgt_sound examples/13_sound.cpp)
-    bgt_add_example(bgt_errors examples/14_errors.cpp)
+    bgt_add_example(bgt_sudoku demo/01_sudoku.cpp)
+    bgt_add_example(bgt_hanoi demo/02_hanoi.cpp)
+    bgt_add_example(bgt_api_tour examples/06_api_tour.cpp)
+    bgt_add_example(bgt_images examples/07_images.cpp)
+    bgt_add_example(bgt_random examples/08_random.cpp)
+    bgt_add_example(bgt_collision examples/09_collision.cpp)
+    bgt_add_example(bgt_storage examples/10_storage.cpp)
+    bgt_add_example(bgt_sound examples/11_sound.cpp)
+    bgt_add_example(bgt_errors examples/12_errors.cpp)
 
     add_custom_command(
         TARGET bgt_images
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${CMAKE_CURRENT_SOURCE_DIR}/examples/09_image.png"
-                "$<TARGET_FILE_DIR:bgt_images>/09_image.png"
+                "${CMAKE_CURRENT_SOURCE_DIR}/examples/07_image.png"
+                "$<TARGET_FILE_DIR:bgt_images>/07_image.png"
         VERBATIM)
 
     foreach(sound_asset jump ding boom melody)
@@ -181,8 +181,8 @@ if(BGT_BUILD_EXAMPLES)
             TARGET bgt_sound
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${CMAKE_CURRENT_SOURCE_DIR}/examples/13_${sound_asset}.wav"
-                    "$<TARGET_FILE_DIR:bgt_sound>/13_${sound_asset}.wav"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/examples/11_${sound_asset}.wav"
+                    "$<TARGET_FILE_DIR:bgt_sound>/11_${sound_asset}.wav"
             VERBATIM)
     endforeach()
 
@@ -190,8 +190,8 @@ if(BGT_BUILD_EXAMPLES)
         TARGET bgt_sudoku
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${CMAKE_CURRENT_SOURCE_DIR}/demo/06_sudoku_puzzle.txt"
-                "$<TARGET_FILE_DIR:bgt_sudoku>/06_sudoku_puzzle.txt"
+                "${CMAKE_CURRENT_SOURCE_DIR}/demo/01_sudoku_puzzle.txt"
+                "$<TARGET_FILE_DIR:bgt_sudoku>/01_sudoku_puzzle.txt"
         VERBATIM)
 endif()
 
@@ -228,8 +228,8 @@ if(BGT_BUILD_TESTS)
             TARGET bgt_test_sound
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${CMAKE_CURRENT_SOURCE_DIR}/examples/13_${sound_asset}.wav"
-                    "$<TARGET_FILE_DIR:bgt_test_sound>/13_${sound_asset}.wav"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/examples/11_${sound_asset}.wav"
+                    "$<TARGET_FILE_DIR:bgt_test_sound>/11_${sound_asset}.wav"
             VERBATIM)
     endforeach()
 

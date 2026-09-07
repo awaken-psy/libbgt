@@ -87,7 +87,7 @@ cmake --build build
 先运行 `bgt_hello` 确认环境正常，再运行 `bgt_hanoi`（汉诺塔演示：三态流程、
 手动游玩与递归自动求解，配套作业见[作业设计](docs/exercises.md)）。
 
-带配套文件的程序（如 `demo/06_sudoku` 的谜题文本、`examples/13_sound` 的
+带配套文件的程序（如 `demo/01_sudoku` 的谜题文本、`examples/11_sound` 的
 合成音效）要从可执行文件所在目录运行——构建时这些文件已经复制到同一目录。
 
 ## 常用配置项
@@ -125,23 +125,23 @@ libbgt/
     03_text.cpp
     04_input.cpp
     05_transparency.cpp
-    08_api_tour.cpp
-    09_images.cpp
-    09_image.png
-    10_random.cpp
-    11_collision.cpp
-    12_storage.cpp
-    13_sound.cpp
-    13_jump.wav
-    13_ding.wav
-    13_boom.wav
-    13_melody.wav
+    06_api_tour.cpp
+    07_images.cpp
+    07_image.png
+    08_random.cpp
+    09_collision.cpp
+    10_storage.cpp
+    11_sound.cpp
+    11_jump.wav
+    11_ding.wav
+    11_boom.wav
+    11_melody.wav
     make_sound_assets.py
-    14_errors.cpp
+    12_errors.cpp
   demo/
-    06_sudoku.cpp
-    06_sudoku_puzzle.txt
-    07_hanoi.cpp
+    01_sudoku.cpp
+    01_sudoku_puzzle.txt
+    02_hanoi.cpp
   tests/
     test_random.cpp
     test_collision.cpp
@@ -216,7 +216,7 @@ package/
 
 - `include/bgt.h`
 - `src/bgt.cpp`
-- `examples/` 下的 8 个示例（`01_hello.cpp` 到 `08_api_tour.cpp`）
+- `examples/` 与 `demo/` 下的 8 个首批程序（`examples/` 01–06 与 `demo/` 01–02）
 
 首版暂不提供：
 

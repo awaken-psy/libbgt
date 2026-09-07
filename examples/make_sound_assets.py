@@ -96,10 +96,10 @@ def melody_sound():
 
 
 def main():
-    write_wav("13_jump.wav", *jump_sound())
-    write_wav("13_ding.wav", *ding_sound())
-    write_wav("13_boom.wav", *boom_sound())
-    write_wav("13_melody.wav", *melody_sound())
+    write_wav("11_jump.wav", *jump_sound())
+    write_wav("11_ding.wav", *ding_sound())
+    write_wav("11_boom.wav", *boom_sound())
+    write_wav("11_melody.wav", *melody_sound())
 
 
 if __name__ == "__main__":
