@@ -429,6 +429,9 @@ examples/04_input.cpp            键盘与鼠标输入
 examples/05_transparency.cpp    透明与颜色混合
 demo/01_sudoku.cpp               综合小游戏（数独）
 demo/02_hanoi.cpp                汉诺塔演示（三态流程 + 递归自动求解）
+demo/03_breakout.cpp             打砖块（碰撞 + 音效，实时循环）
+demo/04_minesweeper.cpp          扫雷（随机 + 存档，回合策略）
+demo/05_shooter.cpp              太空射击（图片/随机/碰撞/存档/声音综合门面）
 examples/06_api_tour.cpp        面向初学者的板块式 API 速查（可作课堂讲义直接分发）
 ```
 
@@ -448,7 +451,6 @@ examples/06_api_tour.cpp        面向初学者的板块式 API 速查（可作�
 - 图片缩放。
 - 简单碰撞检测。
 - 随机数。
-- 更多示例小游戏。
 
 可能的 `v0.3` 内容：
 
@@ -554,3 +556,8 @@ v0.3 错误诊断已实现：错误保留最近 10 条历史（环形队列）�
 `bgt_error_text`），`bgt_draw_error` 支持按序号绘制并自动按窗口宽度
 换行；v0.1 的无参用法由薄转调层保持不变（见 `docs/api-v0.3.md`），
 配套显式检查测试（`BGT_BUILD_TESTS`）。
+
+v0.3 demo 题库已就绪：`demo/` 新增打砖块（碰撞 + 音效）、扫雷（随机 +
+存档）、太空射击（v0.2/v0.3 API 综合门面）三个完整游戏，资产由
+`demo/make_game_assets.py` 零版权合成；作业题库 `docs/exercises.md`
+重构为每游戏一节模板（总览表 + 分步引导 + 验收点 + 参考实现）。

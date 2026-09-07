@@ -85,7 +85,7 @@ cmake --build build
 ```
 
 先运行 `bgt_hello` 确认环境正常，再运行 `bgt_hanoi`（汉诺塔演示：三态流程、
-手动游玩与递归自动求解，配套作业见[作业设计](docs/exercises.md)）。
+手动游玩与递归自动求解，配套作业见[作业题库](docs/exercises.md)）。
 
 带配套文件的程序（如 `demo/01_sudoku` 的谜题文本、`examples/11_sound` 的
 合成音效）要从可执行文件所在目录运行——构建时这些文件已经复制到同一目录。
@@ -142,6 +142,22 @@ libbgt/
     01_sudoku.cpp
     01_sudoku_puzzle.txt
     02_hanoi.cpp
+    03_breakout.cpp
+    03_bounce.wav
+    03_brick.wav
+    03_lose.wav
+    03_win.wav
+    04_minesweeper.cpp
+    04_mine.wav
+    04_win.wav
+    05_shooter.cpp
+    05_shoot.wav
+    05_boom.wav
+    05_lose.wav
+    05_bgm.wav
+    05_ship.png
+    05_enemy.png
+    make_game_assets.py
   tests/
     test_random.cpp
     test_collision.cpp
@@ -156,7 +172,7 @@ libbgt/
 ```
 
 当前仓库包含首版基础 API 实现、CMake 构建脚本、12 个功能示例（`examples/`）
-与 2 个完整游戏演示（`demo/`）。文本绘制默认
+与 5 个完整游戏演示（`demo/`）。文本绘制默认
 使用系统自带的中文字体（Windows 下通常是微软雅黑），不依赖仓库内的字体文件；
 系统缺少中文字体时，可以用 `bgt_set_font()` 指定可用字体。
 
@@ -196,7 +212,7 @@ package/
 
 - [设计文档](docs/design.md)
 - [首版 API 文档](docs/api-v0.md)
-- [作业设计（汉诺塔主题）](docs/exercises.md)
+- [作业题库（汉诺塔/打砖块/扫雷/太空射击）](docs/exercises.md)
 - [v0.2 API 文档（图片、随机数、碰撞检测）](docs/api-v0.2.md)
 - [v0.3 API 文档（文件存档、声音播放、错误诊断）](docs/api-v0.3.md)
 
