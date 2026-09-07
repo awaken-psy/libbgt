@@ -6,12 +6,18 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <map>
 #include <random>
 #include <string>
+#include <system_error>
 #include <vector>
 
 // The implementation mirrors the beginner-facing API, where short coordinate
@@ -85,6 +91,8 @@ struct State {
     double fps = 0.0;
     int error_code = BGT_ERROR_NONE;
     std::string error_message;
+    // v0.3 存档表：节名 → 键名 → 值的文本形式。
+    std::map<std::string, std::map<std::string, std::string>> storage;
 
     ~State()
     {
@@ -1837,6 +1845,406 @@ bool bgt_hit_circle_rect(int cx, int cy, int radius, int x, int y,
     const long long dy = cy - nearest_y;
     const long long r = radius;
     return dx * dx + dy * dy < r * r;
+}
+
+// ---------------------------------------------------------------------
+// 文件存档（v0.3）：内存中的节-键-值表 + 文本存档文件。
+// “文本即真值”：内存表与存档文件都存值的文本形式，set 把值转成文本，
+// get 按类型解析文本，一条代码路径保证两边永远一致。
+// ---------------------------------------------------------------------
+namespace {
+
+// 去掉首尾的空白字符。字符串值、节名、键名都用这个规则整理，
+// 这样学生手写 key = 100 也能正确读入。
+std::string trim_copy(const std::string &text)
+{
+    const std::size_t first = text.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) {
+        return {};
+    }
+    const std::size_t last = text.find_last_not_of(" \t\r\n");
+    return text.substr(first, last - first + 1);
+}
+
+// 节名规则：非空，且不含 [、] 和换行（否则写进文件后会解析不回来）。
+bool valid_section_name(const std::string &name)
+{
+    return !name.empty() && name.find('[') == std::string::npos &&
+           name.find(']') == std::string::npos &&
+           name.find('\n') == std::string::npos;
+}
+
+// 键名规则：非空，不含 = 和换行；且首字符不能是 # 或 [——否则写盘后
+// 会被读回逻辑误判成注释行或节头，存档读不回来。
+bool valid_key_name(const std::string &name)
+{
+    return !name.empty() && name.find('=') == std::string::npos &&
+           name.find('\n') == std::string::npos &&
+           name.front() != '#' && name.front() != '[';
+}
+
+// 整理并校验节名与键名。不合法时记录错误并返回 false。
+bool storage_names(const char section[], const char key[],
+                   std::string &section_out, std::string &key_out)
+{
+    State &s = state();
+    section_out = section == nullptr ? std::string() : trim_copy(section);
+    key_out = key == nullptr ? std::string() : trim_copy(key);
+    if (!valid_section_name(section_out)) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "invalid section name: '" + section_out + "'");
+        return false;
+    }
+    if (!valid_key_name(key_out)) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "invalid key name: '" + key_out + "'");
+        return false;
+    }
+    return true;
+}
+
+// 在内存存档表中查找 (节, 键) 对应的值文本；找不到返回 nullptr。
+const std::string *find_storage_value(const std::string &section,
+                                      const std::string &key)
+{
+    State &s = state();
+    const auto section_it = s.storage.find(section);
+    if (section_it == s.storage.end()) {
+        return nullptr;
+    }
+    const auto key_it = section_it->second.find(key);
+    if (key_it == section_it->second.end()) {
+        return nullptr;
+    }
+    return &key_it->second;
+}
+
+std::string int_to_text(int value)
+{
+    return std::to_string(value);
+}
+
+// 小数用最短往返表示：45.5 存 45.5，读回来还是精确的 45.5。
+std::string double_to_text(double value)
+{
+    char buffer[64];
+    const std::to_chars_result result =
+        std::to_chars(buffer, buffer + sizeof(buffer), value);
+    return std::string(buffer, result.ptr);
+}
+
+// 全串严格解析：文本必须整体是整数，且落在 int 范围内。
+bool parse_int_text(const std::string &text, int &value_out)
+{
+    int value = 0;
+    const char *begin = text.data();
+    const char *end = begin + text.size();
+    const std::from_chars_result result = std::from_chars(begin, end, value);
+    if (result.ec != std::errc() || result.ptr != end) {
+        return false;
+    }
+    value_out = value;
+    return true;
+}
+
+// 全串严格解析小数；"120" 也能读成 120.0（整数可以当小数用）。
+bool parse_double_text(const std::string &text, double &value_out)
+{
+    double value = 0.0;
+    const char *begin = text.data();
+    const char *end = begin + text.size();
+    const std::from_chars_result result = std::from_chars(begin, end, value);
+    if (result.ec != std::errc() || result.ptr != end) {
+        return false;
+    }
+    value_out = value;
+    return true;
+}
+
+// 截断到 limit 字节内最后一个完整的 UTF-8 字符：中文不会被切一半，
+// 输出永远是合法的 UTF-8 文本。
+std::size_t utf8_prefix_length(const std::string &text, std::size_t limit)
+{
+    std::size_t length = 0;
+    while (length < text.size() && length < limit) {
+        const auto byte = static_cast<unsigned char>(text[length]);
+        std::size_t char_bytes = 1;
+        if ((byte & 0xF8U) == 0xF0U) {
+            char_bytes = 4;
+        } else if ((byte & 0xF0U) == 0xE0U) {
+            char_bytes = 3;
+        } else if ((byte & 0xE0U) == 0xC0U) {
+            char_bytes = 2;
+        }
+        if (length + char_bytes > limit || length + char_bytes > text.size()) {
+            break;
+        }
+        length += char_bytes;
+    }
+    return length;
+}
+
+} // namespace
+
+void bgt_set_int(const char section[], const char key[], int value)
+{
+    std::string section_name;
+    std::string key_name;
+    if (!storage_names(section, key, section_name, key_name)) {
+        return;
+    }
+    state().storage[section_name][key_name] = int_to_text(value);
+}
+
+void bgt_set_double(const char section[], const char key[], double value)
+{
+    std::string section_name;
+    std::string key_name;
+    if (!storage_names(section, key, section_name, key_name)) {
+        return;
+    }
+    state().storage[section_name][key_name] = double_to_text(value);
+}
+
+void bgt_set_string(const char section[], const char key[], const char value[])
+{
+    std::string section_name;
+    std::string key_name;
+    if (!storage_names(section, key, section_name, key_name)) {
+        return;
+    }
+    const std::string text =
+        value == nullptr ? std::string() : trim_copy(value);
+    if (text.find('\n') != std::string::npos) {
+        state().set_error(
+            BGT_ERROR_STORAGE, "string value must not contain a newline");
+        return;
+    }
+    state().storage[section_name][key_name] = text;
+}
+
+int bgt_get_int(const char section[], const char key[], int default_value)
+{
+    std::string section_name;
+    std::string key_name;
+    if (!storage_names(section, key, section_name, key_name)) {
+        return default_value;
+    }
+    State &s = state();
+    const std::string *text = find_storage_value(section_name, key_name);
+    if (text == nullptr) {
+        return default_value;
+    }
+    int value = 0;
+    if (!parse_int_text(*text, value)) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "storage entry '" + section_name + "." + key_name +
+                        "' is not an integer: '" + *text + "'");
+        return default_value;
+    }
+    return value;
+}
+
+double bgt_get_double(const char section[], const char key[],
+                      double default_value)
+{
+    std::string section_name;
+    std::string key_name;
+    if (!storage_names(section, key, section_name, key_name)) {
+        return default_value;
+    }
+    State &s = state();
+    const std::string *text = find_storage_value(section_name, key_name);
+    if (text == nullptr) {
+        return default_value;
+    }
+    double value = 0.0;
+    if (!parse_double_text(*text, value)) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "storage entry '" + section_name + "." + key_name +
+                        "' is not a number: '" + *text + "'");
+        return default_value;
+    }
+    return value;
+}
+
+void bgt_get_string(const char section[], const char key[], char out[],
+                    int out_size, const char default_value[])
+{
+    State &s = state();
+    if (out == nullptr || out_size <= 0) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "string output array is missing or empty");
+        return;
+    }
+    std::string section_name;
+    std::string key_name;
+    bool found = false;
+    std::string text;
+    if (storage_names(section, key, section_name, key_name)) {
+        const std::string *stored = find_storage_value(section_name, key_name);
+        if (stored != nullptr) {
+            text = *stored;
+            found = true;
+        }
+    }
+    if (!found) {
+        text = default_value == nullptr ? std::string() : default_value;
+    }
+    const auto limit = static_cast<std::size_t>(out_size - 1);
+    if (text.size() <= limit) {
+        std::memcpy(out, text.c_str(), text.size() + 1);
+        return;
+    }
+    const std::size_t prefix = utf8_prefix_length(text, limit);
+    std::memcpy(out, text.c_str(), prefix);
+    out[prefix] = '\0';
+    s.set_error(BGT_ERROR_STORAGE,
+                "string value is too long for the output array");
+}
+
+bool bgt_load(const char filename[])
+{
+    State &s = state();
+    if (filename == nullptr || filename[0] == '\0') {
+        s.set_error(BGT_ERROR_STORAGE, "storage filename is empty");
+        return false;
+    }
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file) {
+        std::error_code probe_error;
+        if (std::filesystem::exists(filename, probe_error)) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "failed to open storage file " +
+                            std::string(filename));
+            return false;
+        }
+        // 文件不存在是正常情况（比如游戏第一次运行）：空表、无错误。
+        s.storage.clear();
+        return true;
+    }
+    // 容忍记事本写出的 UTF-8 BOM。
+    char bom[3] = {};
+    file.read(bom, 3);
+    if (!(bom[0] == '\xEF' && bom[1] == '\xBB' && bom[2] == '\xBF')) {
+        file.clear();
+        file.seekg(0);
+    }
+    s.storage.clear();
+    std::string line;
+    std::string section;
+    bool in_section = false; // 节头之前（或坏节头之后）的键值行判为坏行
+    bool all_lines_ok = true;
+    while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        const std::string trimmed = trim_copy(line);
+        if (trimmed.empty() || trimmed.front() == '#') {
+            continue; // 空行与 # 整行注释
+        }
+        if (trimmed.front() == '[') {
+            std::string name;
+            bool ok = false;
+            if (trimmed.back() == ']') {
+                name = trim_copy(trimmed.substr(1, trimmed.size() - 2));
+                ok = valid_section_name(name);
+            }
+            if (!ok) {
+                s.set_error(BGT_ERROR_STORAGE,
+                            "bad line in storage file: '" + trimmed + "'");
+                all_lines_ok = false;
+                in_section = false;
+                continue;
+            }
+            section = name;
+            in_section = true;
+            s.storage[section]; // 空节也登记，往返时保留
+            continue;
+        }
+        const std::size_t eq = line.find('=');
+        if (eq == std::string::npos || !in_section) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "bad line in storage file: '" + trimmed + "'");
+            all_lines_ok = false;
+            continue;
+        }
+        const std::string key = trim_copy(line.substr(0, eq));
+        if (!valid_key_name(key)) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "bad line in storage file: '" + trimmed + "'");
+            all_lines_ok = false;
+            continue;
+        }
+        const std::string value = trim_copy(line.substr(eq + 1));
+        s.storage[section][key] = value;
+    }
+    if (file.bad()) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "failed while reading storage file " +
+                        std::string(filename));
+        return false;
+    }
+    return all_lines_ok;
+}
+
+bool bgt_save(const char filename[])
+{
+    State &s = state();
+    if (filename == nullptr || filename[0] == '\0') {
+        s.set_error(BGT_ERROR_STORAGE, "storage filename is empty");
+        return false;
+    }
+    // 先写临时文件，成功后再整体替换，避免写一半把旧存档弄坏。
+    const std::string temp_name = std::string(filename) + ".tmp";
+    {
+        std::ofstream file(temp_name,
+                           std::ios::out | std::ios::binary | std::ios::trunc);
+        if (!file) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "failed to create storage file " + temp_name);
+            return false;
+        }
+        for (const auto &section : s.storage) {
+            file << '[' << section.first << "]\n";
+            for (const auto &entry : section.second) {
+                file << entry.first << '=' << entry.second << '\n';
+            }
+            file << '\n';
+        }
+        file.flush();
+        // 显式 close 并检查：缓冲数据在 close 时才真正落盘，漏看会静默丢档。
+        file.close();
+        if (!file) {
+            s.set_error(BGT_ERROR_STORAGE,
+                        "failed while writing storage file " + temp_name);
+            // 写坏的临时文件是残渣：删掉，不留 “*.tmp” 尾巴。
+            std::error_code cleanup_error;
+            std::filesystem::remove(temp_name, cleanup_error);
+            return false;
+        }
+    }
+    std::error_code rename_error;
+    std::filesystem::remove(filename, rename_error); // 目标存在时先移除
+    rename_error.clear();
+    std::filesystem::rename(temp_name, filename, rename_error);
+    if (rename_error) {
+        s.set_error(BGT_ERROR_STORAGE,
+                    "failed to replace storage file " +
+                        std::string(filename) + ": " +
+                        rename_error.message());
+        return false;
+    }
+    return true;
+}
+
+bool bgt_file_exists(const char filename[])
+{
+    if (filename == nullptr || filename[0] == '\0') {
+        return false;
+    }
+    std::error_code error;
+    return std::filesystem::exists(filename, error);
 }
 
 bool bgt_has_error()
