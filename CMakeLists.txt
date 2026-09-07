@@ -33,11 +33,13 @@ if(BGT_USE_SYSTEM_SDL)
     find_package(SDL3 CONFIG REQUIRED)
     find_package(SDL3_ttf CONFIG REQUIRED)
     find_package(SDL3_image CONFIG REQUIRED)
+    find_package(SDL3_mixer CONFIG REQUIRED)
 
     if(NOT TARGET SDL3::SDL3-static OR NOT TARGET SDL3_ttf::SDL3_ttf-static
-       OR NOT TARGET SDL3_image::SDL3_image-static)
+       OR NOT TARGET SDL3_image::SDL3_image-static
+       OR NOT TARGET SDL3_mixer::SDL3_mixer-static)
         message(FATAL_ERROR
-            "BGT_USE_SYSTEM_SDL requires SDL3, SDL3_ttf and SDL3_image packages with static targets")
+            "BGT_USE_SYSTEM_SDL requires SDL3, SDL3_ttf, SDL3_image and SDL3_mixer packages with static targets")
     endif()
 else()
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
@@ -48,6 +50,9 @@ else()
     endif()
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL_image/CMakeLists.txt")
         message(FATAL_ERROR "third_party/SDL_image is missing. Run: git submodule update --init --recursive")
+    endif()
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL_mixer/CMakeLists.txt")
+        message(FATAL_ERROR "third_party/SDL_mixer is missing. Run: git submodule update --init --recursive")
     endif()
 
     # Build the bundled dependencies only as static libraries. Besides making the
@@ -68,11 +73,29 @@ else()
     set(SDLIMAGE_JXL OFF CACHE BOOL "" FORCE)
     set(SDLIMAGE_DEPS_SHARED OFF CACHE BOOL "" FORCE)
     set(SDLIMAGE_PNG_SHARED OFF CACHE BOOL "" FORCE)
+
+    # SDL_mixer：只保留内置单文件解码器（WAV / dr_mp3 / drflac /
+    # stb_vorbis），关闭所有带嵌套子模块的解码器——零递归依赖。
+    set(SDLMIXER_VENDORED ON CACHE BOOL "" FORCE)
+    set(SDLMIXER_TESTS OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_DEPS_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_MIDI OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_MOD OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_GME OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_OPUS OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_WAVPACK OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_FLAC_LIBFLAC OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_VORBIS_VORBISFILE OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_VORBIS_TREMOR OFF CACHE BOOL "" FORCE)
+    set(SDLMIXER_MP3_MPG123 OFF CACHE BOOL "" FORCE)
+
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 
     add_subdirectory(third_party/SDL SYSTEM EXCLUDE_FROM_ALL)
     add_subdirectory(third_party/SDL_ttf SYSTEM EXCLUDE_FROM_ALL)
     add_subdirectory(third_party/SDL_image SYSTEM EXCLUDE_FROM_ALL)
+    add_subdirectory(third_party/SDL_mixer SYSTEM EXCLUDE_FROM_ALL)
 endif()
 
 add_library(bgt ${BGT_LIBRARY_TYPE} src/bgt.cpp)
@@ -87,11 +110,11 @@ target_include_directories(
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 if(BGT_BUILD_SHARED)
     target_link_libraries(bgt PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static
-        SDL3_image::SDL3_image-static)
+        SDL3_image::SDL3_image-static SDL3_mixer::SDL3_mixer-static)
 else()
     target_compile_definitions(bgt PUBLIC BGT_STATIC_DEFINE)
     target_link_libraries(bgt PUBLIC SDL3::SDL3-static SDL3_ttf::SDL3_ttf-static
-        SDL3_image::SDL3_image-static)
+        SDL3_image::SDL3_image-static SDL3_mixer::SDL3_mixer-static)
 endif()
 
 set_target_properties(bgt PROPERTIES
@@ -108,7 +131,9 @@ if(BGT_BUILD_VENDORED)
                 "$<TARGET_FILE:SDL3-static>"
                 "$<TARGET_FILE:SDL3_ttf-static>"
                 "$<TARGET_FILE:SDL3_image-static>"
+                "$<TARGET_FILE:SDL3_mixer-static>"
         DEPENDS bgt SDL3-static SDL3_ttf-static SDL3_image-static
+            SDL3_mixer-static
         COMMENT "Merging libbgt and vendored dependencies"
         VERBATIM)
     add_custom_target(bgt_vendored ALL DEPENDS "${BGT_VENDORED_LIBRARY}")
@@ -140,6 +165,7 @@ if(BGT_BUILD_EXAMPLES)
     bgt_add_example(bgt_random examples/10_random.cpp)
     bgt_add_example(bgt_collision examples/11_collision.cpp)
     bgt_add_example(bgt_storage examples/12_storage.cpp)
+    bgt_add_example(bgt_sound examples/13_sound.cpp)
 
     add_custom_command(
         TARGET bgt_images
@@ -148,6 +174,16 @@ if(BGT_BUILD_EXAMPLES)
                 "${CMAKE_CURRENT_SOURCE_DIR}/examples/09_image.png"
                 "$<TARGET_FILE_DIR:bgt_images>/09_image.png"
         VERBATIM)
+
+    foreach(sound_asset jump ding boom melody)
+        add_custom_command(
+            TARGET bgt_sound
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_CURRENT_SOURCE_DIR}/examples/13_${sound_asset}.wav"
+                    "$<TARGET_FILE_DIR:bgt_sound>/13_${sound_asset}.wav"
+            VERBATIM)
+    endforeach()
 
     add_custom_command(
         TARGET bgt_sudoku
@@ -178,6 +214,23 @@ if(BGT_BUILD_TESTS)
     set_target_properties(bgt_test_storage PROPERTIES CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
     add_test(NAME bgt_test_storage COMMAND bgt_test_storage)
+
+    add_executable(bgt_test_sound tests/test_sound.cpp)
+    target_link_libraries(bgt_test_sound PRIVATE libbgt::bgt)
+    set_target_properties(bgt_test_sound PROPERTIES CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    add_test(NAME bgt_test_sound COMMAND bgt_test_sound
+        WORKING_DIRECTORY $<TARGET_FILE_DIR:bgt_test_sound>)
+
+    foreach(sound_asset jump ding boom melody)
+        add_custom_command(
+            TARGET bgt_test_sound
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_CURRENT_SOURCE_DIR}/examples/13_${sound_asset}.wav"
+                    "$<TARGET_FILE_DIR:bgt_test_sound>/13_${sound_asset}.wav"
+            VERBATIM)
+    endforeach()
 endif()
 
 if(BGT_BUILD_VENDORED)

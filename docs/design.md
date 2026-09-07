@@ -537,3 +537,9 @@ v0.3 文件存档已实现：节-键-值文本存档接口 `bgt_load`/`bgt_save`
 `bgt_file_exists` 与三类型读写 `bgt_set_*`/`bgt_get_*`（见
 `docs/api-v0.3.md`），存档为记事本可读可改的 INI 风格文本，配套显式
 检查测试（`BGT_BUILD_TESTS`）。
+
+v0.3 声音播放已实现：音效（`bgt_load_sound`/`bgt_play_sound`/
+`bgt_set_sound_volume`，可多声重叠）与背景音乐（`bgt_play_music`/
+`bgt_stop_music`/`bgt_set_music_volume`，流式、默认循环）两类接口（见
+`docs/api-v0.3.md`），基于 SDL_mixer 3.x 子模块，配套显式检查测试
+（`BGT_BUILD_TESTS`）与代码合成的音频资产（`examples/make_sound_assets.py`）。

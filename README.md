@@ -12,8 +12,8 @@
 - 默认只管理一个窗口和一张隐式画布。
 - 中文显示开箱可用，默认使用系统中文字体。
 - 项目使用 CMake 构建。
-- SDL3 与 SDL3_ttf 通过 Git Submodule 管理。
-- SDL3、SDL3_ttf 及其字体依赖默认静态链接，生成的示例程序无需附带 SDL DLL。
+- SDL3、SDL3_ttf、SDL3_image 与 SDL3_mixer 通过 Git Submodule 管理。
+- SDL3、SDL3_ttf、SDL3_image、SDL3_mixer 及其解码依赖默认静态链接，生成的示例程序无需附带 SDL DLL。
 - 首版只提供低层、直观的基础能力，不提供网格、场景、按钮等高阶封装。
 
 ## 最小示例
@@ -65,7 +65,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-默认把 `libbgt` 编译为静态库，并构建全部 12 个示例程序。
+默认把 `libbgt` 编译为静态库，并构建全部 13 个示例程序。
 
 ### 3. 运行示例
 
@@ -87,6 +87,9 @@ cmake --build build
 先运行 `bgt_hello` 确认环境正常，再运行 `bgt_hanoi`（汉诺塔演示：三态流程、
 手动游玩与递归自动求解，配套作业见[作业设计](docs/exercises.md)）。
 
+带配套文件的示例（如 `06_sudoku` 的谜题文本、`13_sound` 的合成音效）要从
+可执行文件所在目录运行——构建时这些文件已经复制到同一目录。
+
 ## 常用配置项
 
 | 选项 | 默认值 | 说明 |
@@ -95,7 +98,7 @@ cmake --build build
 | `BGT_BUILD_TESTS` | `OFF` | 编译纯函数测试（显式检查，用 ctest 运行） |
 | `BGT_BUILD_SHARED` | `OFF` | 编译为共享库（默认静态） |
 | `BGT_BUILD_VENDORED` | `OFF` | MSVC 下把库与依赖合并为单个 `bgt_vendored.lib`（见下文） |
-| `BGT_USE_SYSTEM_SDL` | `OFF` | 使用系统安装的 SDL3 / SDL3_ttf / SDL3_image 包 |
+| `BGT_USE_SYSTEM_SDL` | `OFF` | 使用系统安装的 SDL3 / SDL3_ttf / SDL3_image / SDL3_mixer 包 |
 
 如改用系统安装的依赖，请确保其同时提供静态 CMake 目标，然后配置
 `-DBGT_USE_SYSTEM_SDL=ON`。
@@ -131,29 +134,37 @@ libbgt/
     10_random.cpp
     11_collision.cpp
     12_storage.cpp
+    13_sound.cpp
+    13_jump.wav
+    13_ding.wav
+    13_boom.wav
+    13_melody.wav
+    make_sound_assets.py
   tests/
     test_random.cpp
     test_collision.cpp
     test_storage.cpp
+    test_sound.cpp
   third_party/
     SDL/
     SDL_ttf/
     SDL_image/
+    SDL_mixer/
 ```
 
-当前仓库包含首版基础 API 实现、CMake 构建脚本和 12 个示例程序。文本绘制默认
+当前仓库包含首版基础 API 实现、CMake 构建脚本和 13 个示例程序。文本绘制默认
 使用系统自带的中文字体（Windows 下通常是微软雅黑），不依赖仓库内的字体文件；
 系统缺少中文字体时，可以用 `bgt_set_font()` 指定可用字体。
 
 ## 依赖管理
 
-SDL3、SDL3_ttf 与 SDL3_image 通过 Git Submodule 管理，使用者克隆后初始化
+SDL3、SDL3_ttf、SDL3_image 与 SDL3_mixer 通过 Git Submodule 管理，使用者克隆后初始化
 子模块即可（命令见[快速开始](#快速开始)）。
 
 ## MSVC 二进制分发
 
-面向 Visual Studio 使用者时，可以把 libbgt、SDL3、SDL3_ttf、SDL3_image 及其
-依赖的静态库合并为一个 `bgt_vendored.lib`。使用者不需要复制或链接 SDL DLL：
+面向 Visual Studio 使用者时，可以把 libbgt、SDL3、SDL3_ttf、SDL3_image、
+SDL3_mixer 及其依赖的静态库合并为一个 `bgt_vendored.lib`。使用者不需要复制或链接 SDL DLL：
 
 ```powershell
 cmake -S . -B build-dist -G "Visual Studio 18 2026" -A x64 `
